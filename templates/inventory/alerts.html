@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% block title %}Low Stock Alerts — {{ STORE_NAME }}{% endblock %}
+{% block page_title %}Low Stock Alerts{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title"><i class="fas fa-exclamation-triangle"></i> Low Stock Products</h3>
+        <a href="{{ url_for('inventory.overview') }}" class="btn btn-outline btn-sm"><i class="fas fa-arrow-left"></i> All Inventory</a>
+    </div>
+
+    {% if products %}
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Category</th>
+                <th>Current Stock</th>
+                <th>Status</th>
+                <th>Adjust</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in products %}
+            <tr class="{% if product.quantity <= 5 %}row-danger{% else %}row-warning{% endif %}">
+                <td><strong>{{ product.product_name }}</strong></td>
+                <td>{{ product.category }}</td>
+                <td><strong>{{ product.quantity }}</strong></td>
+                <td>
+                    {% if product.quantity <= 5 %}
+                    <span class="badge badge-danger">Critical</span>
+                    {% else %}
+                    <span class="badge badge-warning">Low</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-outline" onclick="openAdjustModal({{ product.id }}, '{{ product.product_name }}', {{ product.quantity }})">
+                        Restock
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state-box">
+        <p><i class="fas fa-check-circle"></i> All products have adequate stock levels.</p>
+    </div>
+    {% endif %}
+</div>
+
+<div class="modal-overlay" id="adjustModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Restock Product</h3>
+            <button class="modal-close" onclick="closeModal('adjustModal')">×</button>
+        </div>
+        <div class="modal-body">
+            <p>Product: <strong id="adjustProductName"></strong></p>
+            <p>Current Stock: <strong id="adjustCurrentStock"></strong></p>
+            <form id="adjustForm" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="adjustment_type" value="restock">
+                <div class="form-group">
+                    <label class="form-label">Quantity to Add</label>
+                    <input type="number" name="quantity_change" class="form-input" required min="1">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Notes</label>
+                    <input type="text" name="notes" class="form-input" placeholder="e.g. Delivery from supplier">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('adjustModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Restock</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openAdjustModal(productId, name, currentStock) {
+    document.getElementById('adjustProductName').textContent = name;
+    document.getElementById('adjustCurrentStock').textContent = currentStock;
+    document.getElementById('adjustForm').action = '/inventory/adjust/' + productId;
+    openModal('adjustModal');
+}
+</script>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block title %}Customers — {{ STORE_NAME }}{% endblock %}
+{% block page_title %}Customers{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">All Customers</h3>
+        <div class="header-actions">
+            <div class="search-box">
+                <span class="search-icon"><i class="fas fa-search"></i></span>
+                <input type="text" id="searchInput" class="search-input" placeholder="Search customers...">
+            </div>
+            {% if current_user.role in ['admin', 'manager'] %}
+            <a href="{{ url_for('customers.add_customer') }}" class="btn btn-primary">+ Add Customer</a>
+            {% endif %}
+        </div>
+    </div>
+    <table class="table" id="customersTable">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Loyalty Points</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for customer in customers %}
+            <tr class="searchable-row">
+                <td><strong>{{ customer.name }}</strong></td>
+                <td>{{ customer.phone or '—' }}</td>
+                <td>{{ customer.email or '—' }}</td>
+                <td><span class="badge badge-blue">{{ customer.loyalty_points }} pts</span></td>
+                <td>
+                    <div class="action-btns">
+                        <a href="{{ url_for('customers.profile', customer_id=customer.id) }}" class="btn btn-sm btn-outline">View</a>
+                        {% if current_user.role in ['admin', 'manager'] %}
+                        <a href="{{ url_for('customers.edit_customer', customer_id=customer.id) }}" class="btn btn-sm btn-outline">Edit</a>
+                        <button class="btn btn-sm btn-danger" onclick="confirmDelete('{{ customer.name }}', '{{ url_for('customers.delete_customer', customer_id=customer.id) }}')">Delete</button>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="empty-state">No customers found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal">
+        <div class="modal-header"><h3>Confirm Delete</h3></div>
+        <div class="modal-body">
+            <p>Delete customer <strong id="deleteCustomerName"></strong>?</p>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('deleteModal')">Cancel</button>
+            <form id="deleteForm" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger">Delete</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmDelete(name, url) {
+    document.getElementById('deleteCustomerName').textContent = name;
+    document.getElementById('deleteForm').action = url;
+    openModal('deleteModal');
+}
+</script>
+{% endblock %}

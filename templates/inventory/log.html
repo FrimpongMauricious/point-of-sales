@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block title %}Inventory Log — {{ STORE_NAME }}{% endblock %}
+{% block page_title %}Inventory Log{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Stock Change History</h3>
+        <a href="{{ url_for('inventory.overview') }}" class="btn btn-outline btn-sm">← Back</a>
+    </div>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Product</th>
+                <th>Type</th>
+                <th>Change</th>
+                <th>Notes</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for log in logs %}
+            <tr>
+                <td>{{ log.id }}</td>
+                <td>{{ log.product.product_name }}</td>
+                <td>
+                    {% if log.change_type == 'sale' %}
+                    <span class="badge badge-blue">Sale</span>
+                    {% elif log.change_type == 'restock' %}
+                    <span class="badge badge-success">Restock</span>
+                    {% else %}
+                    <span class="badge badge-warning">Adjustment</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if log.quantity_change > 0 %}
+                    <span style="color:#10B981;">+{{ log.quantity_change }}</span>
+                    {% else %}
+                    <span style="color:#EF4444;">{{ log.quantity_change }}</span>
+                    {% endif %}
+                </td>
+                <td>{{ log.notes or '—' }}</td>
+                <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="6" class="empty-state">No log entries found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

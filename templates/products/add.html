@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Add Product — {{ STORE_NAME }}{% endblock %}
+{% block page_title %}Add Product{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:700px;">
+    <div class="card-header">
+        <h3 class="card-title">New Product</h3>
+        <a href="{{ url_for('products.list_products') }}" class="btn btn-outline btn-sm">← Back</a>
+    </div>
+    <form method="POST" action="{{ url_for('products.add_product') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-grid">
+            <div class="form-group">
+                <label class="form-label">Product Name *</label>
+                <input type="text" name="product_name" class="form-input" required placeholder="e.g. Coca-Cola 500ml">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Category *</label>
+                <select name="category" class="form-input" required>
+                    <option value="">Select category...</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat }}">{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Selling Price ({{ CURRENCY_SYMBOL }}) *</label>
+                <input type="number" name="price" class="form-input" required step="0.01" min="0.01" placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Cost Price ({{ CURRENCY_SYMBOL }}) *</label>
+                <input type="number" name="cost_price" class="form-input" required step="0.01" min="0" placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Initial Quantity *</label>
+                <input type="number" name="quantity" class="form-input" required min="0" value="0">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Barcode</label>
+                <input type="text" name="barcode" class="form-input" placeholder="Optional">
+            </div>
+            <div class="form-group form-group-full">
+                <label class="form-label">Supplier</label>
+                <input type="text" name="supplier" class="form-input" placeholder="Optional">
+            </div>
+        </div>
+        <div class="form-actions">
+            <a href="{{ url_for('products.list_products') }}" class="btn btn-outline">Cancel</a>
+            <button type="submit" class="btn btn-primary">Add Product</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Payment #{{ payment.id }} — {{ STORE_NAME }}{% endblock %}
+{% block page_title %}Payment Detail{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:500px;">
+    <div class="card-header">
+        <h3 class="card-title">Payment #{{ payment.id }}</h3>
+        <a href="{{ url_for('receipts.receipt', sale_id=payment.sale_id) }}" class="btn btn-outline btn-sm">View Receipt</a>
+    </div>
+    <div class="profile-info">
+        <div class="profile-row"><span class="profile-label">Sale #</span><span>#{{ payment.sale_id }}</span></div>
+        <div class="profile-row"><span class="profile-label">Method</span><span>{{ payment.payment_method.replace('_',' ').title() }}</span></div>
+        <div class="profile-row"><span class="profile-label">Amount Paid</span><span>{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(payment.amount_paid) }}</span></div>
+        <div class="profile-row"><span class="profile-label">Change Due</span><span>{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(payment.change_due) }}</span></div>
+        <div class="profile-row"><span class="profile-label">Reference</span><span>{{ payment.reference_number or '—' }}</span></div>
+        <div class="profile-row"><span class="profile-label">Date</span><span>{{ payment.created_at.strftime('%Y-%m-%d %H:%M') }}</span></div>
+    </div>
+</div>
+{% endblock %}

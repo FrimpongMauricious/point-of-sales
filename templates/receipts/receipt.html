@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Receipt #{{ sale.id }} — {{ STORE_NAME }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; }
+            .receipt-wrapper { box-shadow: none !important; }
+        }
+    </style>
+</head>
+<body style="background:#F1F5F9; min-height:100vh; display:flex; align-items:flex-start; justify-content:center; padding:2rem;">
+
+<div class="receipt-wrapper">
+    <!-- Print / Back buttons -->
+    <div class="no-print" style="display:flex;gap:1rem;margin-bottom:1rem;">
+        <a href="{{ url_for('sales.pos') }}" class="btn btn-outline"><i class="fas fa-arrow-left"></i> New Sale</a>
+        <a href="{{ url_for('sales.history') }}" class="btn btn-outline">All Sales</a>
+        <button onclick="window.print()" class="btn btn-primary"><i class="fas fa-print"></i> Print Receipt</button>
+    </div>
+
+    <div class="receipt-card">
+        <!-- Header -->
+        <div class="receipt-header">
+            <div class="receipt-logo">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="{{ STORE_NAME }}" class="receipt-logo-img">
+        </div>
+            <h2 class="receipt-store">{{ STORE_NAME }}</h2>
+            <p class="receipt-tagline">Thank you for shopping with us!</p>
+        </div>
+
+        <!-- Meta -->
+        <div class="receipt-meta">
+            <div class="receipt-meta-row">
+                <span>Transaction #</span><strong>#{{ sale.id }}</strong>
+            </div>
+            <div class="receipt-meta-row">
+                <span>Date</span><strong>{{ sale.created_at.strftime('%Y-%m-%d %H:%M') }}</strong>
+            </div>
+            <div class="receipt-meta-row">
+                <span>Cashier</span><strong>{{ sale.cashier.username }}</strong>
+            </div>
+            {% if sale.customer %}
+            <div class="receipt-meta-row">
+                <span>Customer</span><strong>{{ sale.customer.name }}</strong>
+            </div>
+            {% endif %}
+            <div class="receipt-meta-row">
+                <span>Payment</span>
+                <strong>{{ sale.payment_method.replace('_', ' ').title() }}</strong>
+            </div>
+        </div>
+
+        <hr class="receipt-divider">
+
+        <!-- Items -->
+        <table class="receipt-table">
+            <thead>
+                <tr>
+                    <th style="text-align:left;">Item</th>
+                    <th style="text-align:center;">Qty</th>
+                    <th style="text-align:right;">Price</th>
+                    <th style="text-align:right;">Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in sale.items %}
+                <tr>
+                    <td>{{ item.product.product_name }}</td>
+                    <td style="text-align:center;">{{ item.quantity }}</td>
+                    <td style="text-align:right;">{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(item.unit_price) }}</td>
+                    <td style="text-align:right;">{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(item.subtotal) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <hr class="receipt-divider">
+
+        <!-- Totals -->
+        <div class="receipt-totals">
+            <div class="receipt-total-row">
+                <span>Subtotal</span>
+                <span>{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(sale.total_amount - sale.tax + sale.discount) }}</span>
+            </div>
+            {% if sale.discount > 0 %}
+            <div class="receipt-total-row" style="color:#10B981;">
+                <span>Discount</span>
+                <span>−{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(sale.discount) }}</span>
+            </div>
+            {% endif %}
+            <div class="receipt-total-row">
+                <span>Tax</span>
+                <span>{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(sale.tax) }}</span>
+            </div>
+            <div class="receipt-total-row receipt-grand-total">
+                <span>GRAND TOTAL</span>
+                <span>{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(sale.total_amount) }}</span>
+            </div>
+            {% if sale.payment %}
+            <div class="receipt-total-row">
+                <span>Amount Paid</span>
+                <span>{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(sale.payment.amount_paid) }}</span>
+            </div>
+            {% if sale.payment.change_due > 0 %}
+            <div class="receipt-total-row" style="color:#2563EB;">
+                <span>Change Due</span>
+                <span>{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(sale.payment.change_due) }}</span>
+            </div>
+            {% endif %}
+            {% if sale.payment.reference_number %}
+            <div class="receipt-total-row">
+                <span>Reference #</span>
+                <span>{{ sale.payment.reference_number }}</span>
+            </div>
+            {% endif %}
+            {% endif %}
+        </div>
+
+        <div class="receipt-footer">
+            <p>— Thank you for shopping with us! —</p>
+            <p style="font-size:0.75rem;color:#94a3b8;">Please keep this receipt for your records.</p>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

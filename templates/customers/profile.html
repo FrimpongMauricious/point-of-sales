@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+{% block title %}{{ customer.name }} — {{ STORE_NAME }}{% endblock %}
+{% block page_title %}Customer Profile{% endblock %}
+
+{% block content %}
+<div class="grid-2">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">{{ customer.name }}</h3>
+            {% if current_user.role in ['admin', 'manager'] %}
+            <a href="{{ url_for('customers.edit_customer', customer_id=customer.id) }}" class="btn btn-outline btn-sm">Edit</a>
+            {% endif %}
+        </div>
+        <div class="profile-info">
+            <div class="profile-row">
+                <span class="profile-label">📞 Phone</span>
+                <span>{{ customer.phone or '—' }}</span>
+            </div>
+            <div class="profile-row">
+                <span class="profile-label">📧 Email</span>
+                <span>{{ customer.email or '—' }}</span>
+            </div>
+            <div class="profile-row">
+                <span class="profile-label">📍 Address</span>
+                <span>{{ customer.address or '—' }}</span>
+            </div>
+            <div class="profile-row">
+                <span class="profile-label">⭐ Loyalty Points</span>
+                <span class="badge badge-blue" style="font-size:1rem;">{{ customer.loyalty_points }} pts</span>
+            </div>
+            <div class="profile-row">
+                <span class="profile-label">📅 Member Since</span>
+                <span>{{ customer.created_at.strftime('%B %d, %Y') }}</span>
+            </div>
+            <div class="profile-row">
+                <span class="profile-label">🧾 Total Purchases</span>
+                <span><strong>{{ sales|length }}</strong></span>
+            </div>
+            <div class="profile-row">
+                <span class="profile-label">💰 Total Spent</span>
+                <span><strong>{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(sales|sum(attribute='total_amount')) }}</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Purchase History</h3>
+        </div>
+        {% if sales %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Sale #</th>
+                    <th>Date</th>
+                    <th>Items</th>
+                    <th>Total</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sale in sales %}
+                <tr>
+                    <td>#{{ sale.id }}</td>
+                    <td>{{ sale.created_at.strftime('%Y-%m-%d') }}</td>
+                    <td>{{ sale.items|length }} item(s)</td>
+                    <td>{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(sale.total_amount) }}</td>
+                    <td><a href="{{ url_for('receipts.receipt', sale_id=sale.id) }}" class="btn btn-sm btn-outline">Receipt</a></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-state">No purchases yet.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

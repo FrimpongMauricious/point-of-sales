@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block title %}Add Customer — {{ STORE_NAME }}{% endblock %}
+{% block page_title %}Add Customer{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width:600px;">
+    <div class="card-header">
+        <h3 class="card-title">New Customer</h3>
+        <a href="{{ url_for('customers.list_customers') }}" class="btn btn-outline btn-sm">← Back</a>
+    </div>
+    <form method="POST" action="{{ url_for('customers.add_customer') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group">
+            <label class="form-label">Full Name *</label>
+            <input type="text" name="name" class="form-input" required placeholder="e.g. John Mensah">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Phone</label>
+            <input type="text" name="phone" class="form-input" placeholder="e.g. 0241234567">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-input" placeholder="e.g. john@email.com">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Address</label>
+            <textarea name="address" class="form-input" rows="3" placeholder="Optional address"></textarea>
+        </div>
+        <div class="form-actions">
+            <a href="{{ url_for('customers.list_customers') }}" class="btn btn-outline">Cancel</a>
+            <button type="submit" class="btn btn-primary">Add Customer</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

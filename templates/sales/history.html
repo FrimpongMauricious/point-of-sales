@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}Sales History — {{ STORE_NAME }}{% endblock %}
+{% block page_title %}Sales History{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">All Transactions</h3>
+        <div class="search-box">
+            <span class="search-icon"><i class="fas fa-search"></i></span>
+            <input type="text" id="searchInput" class="search-input" placeholder="Search by ID, cashier...">
+        </div>
+    </div>
+    <table class="table" id="salesTable">
+        <thead>
+            <tr>
+                <th>Sale #</th>
+                <th>Date & Time</th>
+                <th>Cashier</th>
+                <th>Customer</th>
+                <th>Payment</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for sale in sales %}
+            <tr class="searchable-row">
+                <td><strong>#{{ sale.id }}</strong></td>
+                <td>{{ sale.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ sale.cashier.username }}</td>
+                <td>{{ sale.customer.name if sale.customer else '—' }}</td>
+                <td>
+                    {% if sale.payment_method == 'cash' %}
+                    <span class="badge badge-success">Cash</span>
+                    {% elif sale.payment_method == 'mobile_money' %}
+                    <span class="badge badge-blue">Mobile Money</span>
+                    {% else %}
+                    <span class="badge badge-warning">Card</span>
+                    {% endif %}
+                </td>
+                <td><strong>{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(sale.total_amount) }}</strong></td>
+                <td><span class="badge badge-success">{{ sale.status }}</span></td>
+                <td><a href="{{ url_for('receipts.receipt', sale_id=sale.id) }}" class="btn btn-sm btn-outline">Receipt</a></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="8" class="empty-state">No sales recorded yet.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

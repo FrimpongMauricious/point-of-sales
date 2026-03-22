@@ -1,0 +1,761 @@
+{% extends 'base.html' %}
+{% block title %}POS — {{ STORE_NAME }}{% endblock %}
+{% block page_title %}Point of Sale{% endblock %}
+{% block content_class %}pos-content{% endblock %}
+
+{% block content %}
+<div class="pos-layout">
+
+    <!-- ===== LEFT PANEL ===== -->
+    <div class="pos-left">
+
+        <!-- VIEW 1: Product Browser (default) -->
+        <div id="productBrowser" class="pos-browser">
+            <div class="pos-search-bar">
+                <div class="search-box" style="flex:1;">
+                    <span class="search-icon"><i class="fas fa-search"></i></span>
+                    <input type="text" id="posSearch" class="search-input" placeholder="Search products by name...">
+                </div>
+                <div class="search-box" style="width:200px;">
+                    <span class="search-icon"><i class="fas fa-barcode"></i></span>
+                    <input type="text" id="barcodeInput" class="search-input" placeholder="Scan barcode...">
+                </div>
+            </div>
+
+            <div class="category-tabs" id="categoryTabs">
+                <button class="cat-tab active" data-cat="all">All</button>
+                {% set categories = products | map(attribute='category') | unique | list %}
+                {% for cat in categories %}
+                <button class="cat-tab" data-cat="{{ cat }}">{{ cat }}</button>
+                {% endfor %}
+            </div>
+
+            <div class="product-grid" id="productGrid">
+                {% for product in products %}
+                <div class="product-card"
+                     data-id="{{ product.id }}"
+                     data-name="{{ product.product_name }}"
+                     data-price="{{ product.price }}"
+                     data-stock="{{ product.quantity }}"
+                     data-category="{{ product.category }}"
+                     data-barcode="{{ product.barcode or '' }}"
+                     onclick="addToCart(this)">
+                    <div class="product-card-name">{{ product.product_name }}</div>
+                    <div class="product-card-cat">{{ product.category }}</div>
+                    <div class="product-card-price">{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(product.price) }}</div>
+                    <div class="product-card-stock {% if product.quantity <= 5 %}stock-critical{% elif product.quantity <= 15 %}stock-low{% endif %}">
+                        Stock: {{ product.quantity }}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- VIEW 2: Selected Item Detail (shown when cart item is clicked) -->
+        <div id="itemDetailPanel" class="item-detail-panel" style="display:none;">
+            <button class="btn btn-outline btn-sm" onclick="showProductBrowser()" style="margin-bottom:1rem;">
+                <i class="fas fa-arrow-left"></i> Back to Products
+            </button>
+            <div class="item-detail-card">
+                <div class="item-detail-name" id="detailName"></div>
+                <div class="item-detail-cat" id="detailCat"></div>
+                <div class="item-detail-price" id="detailPrice"></div>
+                <div class="item-detail-stock" id="detailStock"></div>
+                <div class="item-detail-qty-row">
+                    <span class="item-detail-label">Quantity in Cart</span>
+                    <div class="item-detail-qty-controls">
+                        <button class="qty-btn-lg" id="detailMinus" onclick="detailChangeQty(-1)">−</button>
+                        <span class="qty-display-lg" id="detailQty">1</span>
+                        <button class="qty-btn-lg" id="detailPlus" onclick="detailChangeQty(1)">+</button>
+                    </div>
+                </div>
+                <div class="item-detail-subtotal-row">
+                    <span>Subtotal</span>
+                    <strong class="item-detail-subtotal" id="detailSubtotal"></strong>
+                </div>
+                <button class="btn btn-danger btn-full" style="margin-top:1rem;" onclick="detailRemoveItem()">
+                    <i class="fas fa-trash"></i> Remove from Cart
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== RIGHT PANEL: Cart ===== -->
+    <div class="pos-right">
+        <div class="cart-header">
+            <h3><i class="fas fa-shopping-cart"></i> Cart <span id="cartCount" class="cart-count"></span></h3>
+            <button class="btn btn-sm btn-danger" onclick="clearCart()">Clear</button>
+        </div>
+
+        <!-- Scrollable cart items -->
+        <div class="cart-body">
+            <div class="cart-items" id="cartItems">
+                <div class="cart-empty">
+                    <p>No items in cart</p>
+                    <p class="text-muted">Click a product on the left to add it</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom: totals + customer + payment — all scrollable -->
+        <div class="cart-bottom">
+
+            <!-- Totals -->
+            <div class="cart-totals">
+                <div class="total-row">
+                    <span>Subtotal</span>
+                    <span id="subtotalDisplay">{{ CURRENCY_SYMBOL }}0.00</span>
+                </div>
+                <div class="total-row">
+                    <span>Discount</span>
+                    <div class="discount-input">
+                        <input type="number" id="discountInput" value="0" min="0" step="0.01" oninput="updateTotals()">
+                        <select id="discountType" onchange="updateTotals()">
+                            <option value="flat">{{ CURRENCY_SYMBOL }}</option>
+                            <option value="percent">%</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="total-row">
+                    <span>Tax ({{ (tax_rate * 100)|int }}%)</span>
+                    <span id="taxDisplay">{{ CURRENCY_SYMBOL }}0.00</span>
+                </div>
+                <div class="total-row total-grand">
+                    <span>Grand Total</span>
+                    <span id="grandTotalDisplay">{{ CURRENCY_SYMBOL }}0.00</span>
+                </div>
+            </div>
+
+            <!-- Customer Section -->
+            <div class="cart-options">
+                <div class="customer-section">
+                    <label class="form-label">Customer</label>
+                    <div class="customer-toggle">
+                        <button class="cust-tab active" id="tabExisting" onclick="switchCustomerTab('existing')">
+                            Existing
+                        </button>
+                        <button class="cust-tab" id="tabWalkin" onclick="switchCustomerTab('walkin')">
+                            Walk-in
+                        </button>
+                    </div>
+
+                    <!-- Existing customer dropdown -->
+                    <div id="existingCustomerDiv">
+                        <select id="customerSelect" class="form-input" style="margin-top:.5rem;">
+                            <option value="">— None / Walk-in —</option>
+                            {% for customer in customers %}
+                            <option value="{{ customer.id }}">{{ customer.name }} ({{ customer.loyalty_points }} pts)</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Walk-in phone input -->
+                    <div id="walkinDiv" style="display:none;margin-top:.5rem;">
+                        <div style="display:flex;gap:.5rem;align-items:center;">
+                            <input type="text" id="walkinPhone" class="form-input"
+                                   placeholder="Enter phone number..."
+                                   oninput="onPhoneInput()">
+                            <button class="btn btn-outline btn-sm" onclick="lookupPhone()">Find</button>
+                        </div>
+                        <div id="phoneStatus" class="phone-status" style="display:none;"></div>
+                    </div>
+                </div>
+
+                <!-- Payment Method — static, always visible -->
+                <div class="form-group" style="margin-top:.75rem;">
+                    <label class="form-label">Payment Method</label>
+                    <div class="payment-methods">
+                        <label class="pm-option">
+                            <input type="radio" name="paymentMethod" value="cash" checked onchange="togglePaymentRef()">
+                            <span><i class="fas fa-money-bill-wave"></i> Cash</span>
+                        </label>
+                        <label class="pm-option">
+                            <input type="radio" name="paymentMethod" value="mobile_money" onchange="togglePaymentRef()">
+                            <span><i class="fas fa-mobile-alt"></i> Mobile Money</span>
+                        </label>
+                        <label class="pm-option">
+                            <input type="radio" name="paymentMethod" value="card" onchange="togglePaymentRef()">
+                            <span><i class="fas fa-credit-card"></i> Card</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group" id="refGroup" style="display:none;">
+                    <label class="form-label">Reference Number</label>
+                    <input type="text" id="refNumber" class="form-input" placeholder="Transaction reference">
+                </div>
+            </div>
+
+            <!-- Complete Sale -->
+            <div style="padding:.75rem 1.25rem 1rem;">
+                <button class="btn btn-primary btn-full btn-lg" onclick="completeSale()">
+                    <i class="fas fa-check-circle"></i> Complete Sale
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Register Customer Modal (triggered on 3rd walk-in visit) -->
+<div class="modal-overlay" id="registerModal">
+    <div class="modal" style="min-width:460px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-star"></i> Register New Customer</h3>
+        </div>
+        <div class="modal-body">
+            <div class="register-notice">
+                This customer is buying for the <strong>3rd time</strong>.<br>
+                Please take their details to add them to the customer database.
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Phone Number</label>
+                <input type="text" id="regPhone" class="form-input" readonly
+                       style="background:#F1F5F9;font-weight:600;letter-spacing:.05em;">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Full Name <span style="color:var(--danger)">*</span></label>
+                <input type="text" id="regName" class="form-input"
+                       placeholder="e.g. Kofi Mensah" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Email <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+                <input type="email" id="regEmail" class="form-input"
+                       placeholder="e.g. kofi@email.com" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Address <span style="color:var(--text-muted);font-weight:400;">(optional)</span></label>
+                <input type="text" id="regAddress" class="form-input"
+                       placeholder="e.g. 12 Ring Rd, Accra">
+            </div>
+        </div>
+        <div class="modal-footer" style="justify-content:space-between;">
+            <button class="btn btn-outline" onclick="skipRegistration()">Skip — proceed as walk-in</button>
+            <button class="btn btn-primary" onclick="confirmRegistration()"><i class="fas fa-check"></i> Save &amp; Continue</button>
+        </div>
+    </div>
+</div>
+
+<!-- Cash Modal -->
+<div class="modal-overlay" id="cashModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3><i class="fas fa-money-bill-wave"></i> Cash Payment</h3>
+        </div>
+        <div class="modal-body">
+            <p style="margin-bottom:.75rem;">Grand Total: <strong id="cashTotal" style="font-size:1.3rem;color:var(--primary);"></strong></p>
+            <div class="form-group">
+                <label class="form-label">Amount Tendered</label>
+                <input type="number" id="amountTendered" class="form-input" step="0.01" min="0"
+                       oninput="calcChange()" placeholder="0.00" style="font-size:1.3rem;text-align:right;">
+            </div>
+            <div class="change-display" id="changeDisplay" style="display:none;">
+                <span>Change Due:</span>
+                <strong id="changeDue" style="color:#10B981;font-size:1.5rem;"></strong>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('cashModal')">Cancel</button>
+            <button class="btn btn-primary btn-lg" id="confirmCashBtn" onclick="confirmCashPayment()" disabled>
+                Confirm Payment
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const TAX_RATE = {{ tax_rate }};
+const CURRENCY = '{{ CURRENCY_SYMBOL }}';
+let cart = {};               // { productId: { id, name, price, stock, qty } }
+let selectedItemId = null;   // currently selected cart item for detail view
+let pendingNewCustomer = null; // holds { name, email, address } when registering on 3rd visit
+let isThirdVisit = false;    // flag: current walk-in is a 3rd visit pending registration
+
+// ─── ADD TO CART ────────────────────────────────────────────────────────────
+function addToCart(el) {
+    const id = el.dataset.id;
+    const name = el.dataset.name;
+    const price = parseFloat(el.dataset.price);
+    const stock = parseInt(el.dataset.stock);
+
+    if (cart[id]) {
+        if (cart[id].qty >= stock) {
+            showToast('Max stock reached for ' + name, 'warning');
+            syncProductCardHighlights();
+            return;
+        }
+        cart[id].qty++;
+    } else {
+        if (stock <= 0) { showToast('Out of stock', 'danger'); return; }
+        cart[id] = { id, name, price, stock, qty: 1 };
+    }
+    renderCart();
+    // Persist green border on the clicked card, clear others
+    setActiveProductCard(id);
+}
+
+// Track which product card is "selected" (clicked most recently)
+let activeProductCardId = null;
+
+function setActiveProductCard(id) {
+    activeProductCardId = id;
+    syncProductCardHighlights();
+}
+
+function syncProductCardHighlights() {
+    document.querySelectorAll('.product-card').forEach(card => {
+        if (card.dataset.id === activeProductCardId) {
+            card.classList.add('product-card-selected');
+        } else {
+            card.classList.remove('product-card-selected');
+        }
+    });
+}
+
+// ─── RENDER CART ─────────────────────────────────────────────────────────────
+// Always rebuilds innerHTML — no stale DOM references
+function renderCart() {
+    const container = document.getElementById('cartItems');
+    const items = Object.values(cart);
+
+    // Update count badge
+    const total = items.reduce((s, i) => s + i.qty, 0);
+    const countEl = document.getElementById('cartCount');
+    if (countEl) countEl.textContent = total > 0 ? `(${total})` : '';
+
+    if (items.length === 0) {
+        container.innerHTML = `
+            <div class="cart-empty">
+                <p>No items in cart</p>
+                <p class="text-muted">Click a product on the left to add it</p>
+            </div>`;
+        updateTotals();
+        // If viewing detail panel, go back to products
+        if (selectedItemId) showProductBrowser();
+        return;
+    }
+
+    container.innerHTML = items.map(item => `
+        <div class="cart-item ${selectedItemId === item.id ? 'cart-item-selected' : ''}"
+             id="ci-${item.id}" onclick="selectCartItem('${item.id}')">
+            <div class="ci-info">
+                <span class="ci-name">${escHtml(item.name)}</span>
+                <span class="ci-price">${CURRENCY}${item.price.toFixed(2)} each</span>
+            </div>
+            <div class="ci-controls">
+                <button class="qty-btn${item.qty <= 1 ? ' qty-btn-disabled' : ''}"
+                        onclick="event.stopPropagation(); changeQty('${item.id}', -1)"
+                        ${item.qty <= 1 ? 'disabled' : ''}>−</button>
+                <span class="qty-display">${item.qty}</span>
+                <button class="qty-btn${item.qty >= item.stock ? ' qty-btn-disabled' : ''}"
+                        onclick="event.stopPropagation(); changeQty('${item.id}', 1)"
+                        ${item.qty >= item.stock ? 'disabled' : ''}>+</button>
+                <span class="ci-subtotal">${CURRENCY}${(item.price * item.qty).toFixed(2)}</span>
+                <button class="ci-remove" title="Remove item" onclick="event.stopPropagation(); removeItem('${item.id}')"><i class='fas fa-trash'></i></button>
+            </div>
+        </div>
+    `).join('');
+
+    updateTotals();
+
+    // If detail panel is open, refresh it
+    if (selectedItemId && cart[selectedItemId]) {
+        updateDetailPanel(selectedItemId);
+    } else if (selectedItemId && !cart[selectedItemId]) {
+        showProductBrowser();
+    }
+}
+
+function escHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── QTY CONTROLS ────────────────────────────────────────────────────────────
+function changeQty(id, delta) {
+    if (!cart[id]) return;
+    const newQty = cart[id].qty + delta;
+    if (newQty < 1) {
+        showToast('Minimum quantity is 1. Use the trash button to remove.', 'warning');
+        return;
+    }
+    if (newQty > cart[id].stock) {
+        showToast('Max available stock is ' + cart[id].stock, 'warning');
+        return;
+    }
+    cart[id].qty = newQty;
+    renderCart();
+}
+
+function removeItem(id) {
+    delete cart[id];
+    renderCart();
+}
+
+function clearCart() {
+    cart = {};
+    selectedItemId = null;
+    activeProductCardId = null;
+    syncProductCardHighlights();
+    showProductBrowser();
+    renderCart();
+}
+
+// ─── TOTALS ──────────────────────────────────────────────────────────────────
+function updateTotals() {
+    const items = Object.values(cart);
+    const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
+    const discountVal = parseFloat(document.getElementById('discountInput').value) || 0;
+    const discountType = document.getElementById('discountType').value;
+    let discount = discountType === 'percent' ? (subtotal * discountVal / 100) : discountVal;
+    discount = Math.min(discount, subtotal);
+    const taxable = subtotal - discount;
+    const tax = taxable * TAX_RATE;
+    const grand = taxable + tax;
+
+    document.getElementById('subtotalDisplay').textContent = CURRENCY + subtotal.toFixed(2);
+    document.getElementById('taxDisplay').textContent = CURRENCY + tax.toFixed(2);
+    document.getElementById('grandTotalDisplay').textContent = CURRENCY + grand.toFixed(2);
+}
+
+function getGrandTotal() {
+    const items = Object.values(cart);
+    const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
+    const discountVal = parseFloat(document.getElementById('discountInput').value) || 0;
+    const discountType = document.getElementById('discountType').value;
+    let discount = discountType === 'percent' ? (subtotal * discountVal / 100) : discountVal;
+    discount = Math.min(discount, subtotal);
+    return (subtotal - discount) * (1 + TAX_RATE);
+}
+
+function getDiscount() {
+    const items = Object.values(cart);
+    const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
+    const discountVal = parseFloat(document.getElementById('discountInput').value) || 0;
+    const discountType = document.getElementById('discountType').value;
+    let discount = discountType === 'percent' ? (subtotal * discountVal / 100) : discountVal;
+    return Math.min(discount, subtotal);
+}
+
+// ─── LEFT PANEL VIEWS ────────────────────────────────────────────────────────
+function selectCartItem(id) {
+    selectedItemId = id;
+    // Highlight selected item
+    document.querySelectorAll('.cart-item').forEach(el => el.classList.remove('cart-item-selected'));
+    const el = document.getElementById('ci-' + id);
+    if (el) el.classList.add('cart-item-selected');
+    // Switch left panel to detail view
+    showItemDetail(id);
+}
+
+function showItemDetail(id) {
+    const item = cart[id];
+    if (!item) return;
+    document.getElementById('productBrowser').style.display = 'none';
+    document.getElementById('itemDetailPanel').style.display = 'flex';
+    updateDetailPanel(id);
+}
+
+function updateDetailPanel(id) {
+    const item = cart[id];
+    if (!item) return;
+    document.getElementById('detailName').textContent = item.name;
+    document.getElementById('detailCat').textContent = item.price.toFixed(2) + ' per unit';
+    document.getElementById('detailPrice').textContent = CURRENCY + item.price.toFixed(2) + ' each';
+    document.getElementById('detailStock').textContent = 'Available stock: ' + item.stock;
+    document.getElementById('detailQty').textContent = item.qty;
+    document.getElementById('detailSubtotal').textContent = CURRENCY + (item.price * item.qty).toFixed(2);
+    // Enforce min=1 / max=stock on detail panel buttons
+    const minusBtn = document.getElementById('detailMinus');
+    const plusBtn  = document.getElementById('detailPlus');
+    if (minusBtn) {
+        minusBtn.disabled = item.qty <= 1;
+        minusBtn.classList.toggle('qty-btn-lg-disabled', item.qty <= 1);
+    }
+    if (plusBtn) {
+        plusBtn.disabled = item.qty >= item.stock;
+        plusBtn.classList.toggle('qty-btn-lg-disabled', item.qty >= item.stock);
+    }
+}
+
+function detailChangeQty(delta) {
+    if (!selectedItemId || !cart[selectedItemId]) return;
+    changeQty(selectedItemId, delta);
+    // Refresh the disable state of detail buttons
+    if (cart[selectedItemId]) updateDetailPanel(selectedItemId);
+}
+
+function detailRemoveItem() {
+    if (!selectedItemId) return;
+    removeItem(selectedItemId);
+    selectedItemId = null;
+}
+
+function showProductBrowser() {
+    selectedItemId = null;
+    document.getElementById('productBrowser').style.display = 'flex';
+    document.getElementById('itemDetailPanel').style.display = 'none';
+    document.querySelectorAll('.cart-item').forEach(el => el.classList.remove('cart-item-selected'));
+}
+
+// ─── CUSTOMER TABS ───────────────────────────────────────────────────────────
+function switchCustomerTab(tab) {
+    const existingDiv = document.getElementById('existingCustomerDiv');
+    const walkinDiv = document.getElementById('walkinDiv');
+    const tabEx = document.getElementById('tabExisting');
+    const tabWl = document.getElementById('tabWalkin');
+
+    if (tab === 'existing') {
+        existingDiv.style.display = 'block';
+        walkinDiv.style.display = 'none';
+        tabEx.classList.add('active');
+        tabWl.classList.remove('active');
+    } else {
+        existingDiv.style.display = 'none';
+        walkinDiv.style.display = 'block';
+        tabEx.classList.remove('active');
+        tabWl.classList.add('active');
+    }
+}
+
+function onPhoneInput() {
+    isThirdVisit = false;
+    pendingNewCustomer = null;
+    const statusEl = document.getElementById('phoneStatus');
+    statusEl.style.display = 'none';
+}
+
+function lookupPhone() {
+    const phone = document.getElementById('walkinPhone').value.trim();
+    const statusEl = document.getElementById('phoneStatus');
+    if (!phone) { showToast('Enter a phone number first', 'warning'); return; }
+
+    fetch('/sales/api/customer-by-phone?phone=' + encodeURIComponent(phone), {
+        headers: { 'X-CSRFToken': getCsrfToken() }
+    })
+    .then(r => r.json())
+    .then(data => {
+        statusEl.style.display = 'block';
+        isThirdVisit = false;
+        pendingNewCustomer = null;
+
+        if (data.found) {
+            // Existing registered customer — auto-link
+            statusEl.className = 'phone-status phone-status-found';
+            statusEl.innerHTML = `<strong><i class="fas fa-check"></i> ${escHtml(data.name)}</strong> &mdash; ${data.loyalty_points} loyalty pts<br>
+                                  <small>Linked to this sale automatically</small>`;
+        } else if (data.visit_count >= 2) {
+            // 3rd visit — open registration modal immediately
+            isThirdVisit = true;
+            statusEl.className = 'phone-status phone-status-new';
+            statusEl.innerHTML = `<strong><i class="fas fa-star"></i> 3rd visit!</strong> Collecting customer details for registration...`;
+            openRegisterModal();
+        } else {
+            const remaining = data.visits_until_member;
+            statusEl.className = 'phone-status phone-status-walkin';
+            statusEl.innerHTML = `Visit #${data.visit_count + 1}.
+                <strong>${remaining} more visit${remaining !== 1 ? 's' : ''}</strong> until membership.`;
+        }
+    })
+    .catch(() => showToast('Could not look up phone', 'danger'));
+}
+
+// ─── REGISTRATION MODAL ──────────────────────────────────────────────────────
+function openRegisterModal() {
+    const phone = document.getElementById('walkinPhone').value.trim();
+    document.getElementById('regPhone').value = phone;
+    document.getElementById('regName').value = '';
+    document.getElementById('regName').style.borderColor = '';
+    document.getElementById('regEmail').value = '';
+    document.getElementById('regAddress').value = '';
+    openModal('registerModal');
+    // Focus name field after modal animation
+    setTimeout(() => document.getElementById('regName').focus(), 150);
+}
+
+function confirmRegistration() {
+    const name = document.getElementById('regName').value.trim();
+    if (!name) {
+        document.getElementById('regName').focus();
+        document.getElementById('regName').style.borderColor = 'var(--danger)';
+        showToast('Full name is required', 'danger');
+        return;
+    }
+    document.getElementById('regName').style.borderColor = '';
+    pendingNewCustomer = {
+        name: name,
+        email: document.getElementById('regEmail').value.trim(),
+        address: document.getElementById('regAddress').value.trim()
+    };
+    // Update status
+    const statusEl = document.getElementById('phoneStatus');
+    if (statusEl) {
+        statusEl.style.display = 'block';
+        statusEl.className = 'phone-status phone-status-found';
+        statusEl.innerHTML = `<i class="fas fa-check"></i> <strong>Ready to register: ${escHtml(name)}</strong>`;
+    }
+    closeModal('registerModal');
+    // Auto-proceed to complete the sale
+    completeSale();
+}
+
+function skipRegistration() {
+    // Proceed without capturing details — customer created with phone only
+    pendingNewCustomer = {};
+    isThirdVisit = false;
+    closeModal('registerModal');
+    const statusEl = document.getElementById('phoneStatus');
+    statusEl.className = 'phone-status phone-status-walkin';
+    statusEl.innerHTML = `Proceeding as walk-in. Customer registration skipped.`;
+}
+
+// ─── PAYMENT ─────────────────────────────────────────────────────────────────
+function togglePaymentRef() {
+    const method = document.querySelector('input[name="paymentMethod"]:checked').value;
+    document.getElementById('refGroup').style.display = (method !== 'cash') ? 'block' : 'none';
+}
+
+async function completeSale() {
+    if (Object.keys(cart).length === 0) { showToast('Cart is empty', 'danger'); return; }
+
+    const isWalkin = document.getElementById('walkinDiv').style.display !== 'none';
+    const phone = isWalkin ? document.getElementById('walkinPhone').value.trim() : '';
+
+    // If walk-in phone entered but Find wasn't clicked, auto-check visit count now
+    if (isWalkin && phone && !isThirdVisit && pendingNewCustomer === null) {
+        try {
+            const resp = await fetch('/sales/api/customer-by-phone?phone=' + encodeURIComponent(phone), {
+                headers: { 'X-CSRFToken': getCsrfToken() }
+            });
+            const data = await resp.json();
+            if (!data.found && data.visit_count >= 2) {
+                isThirdVisit = true;
+            }
+        } catch(e) { /* proceed without check */ }
+    }
+
+    // Block and open registration modal if 3rd visit details not yet collected
+    if (isWalkin && isThirdVisit && pendingNewCustomer === null) {
+        openRegisterModal();
+        return;
+    }
+
+    // Proceed to payment
+    const method = document.querySelector('input[name="paymentMethod"]:checked').value;
+    if (method === 'cash') {
+        const grand = getGrandTotal();
+        document.getElementById('cashTotal').textContent = CURRENCY + grand.toFixed(2);
+        document.getElementById('amountTendered').value = '';
+        document.getElementById('changeDisplay').style.display = 'none';
+        document.getElementById('confirmCashBtn').disabled = true;
+        openModal('cashModal');
+    } else {
+        submitSale(0);
+    }
+}
+
+function calcChange() {
+    const tendered = parseFloat(document.getElementById('amountTendered').value) || 0;
+    const grand = getGrandTotal();
+    const change = tendered - grand;
+    const btn = document.getElementById('confirmCashBtn');
+    if (change >= 0) {
+        document.getElementById('changeDue').textContent = CURRENCY + change.toFixed(2);
+        document.getElementById('changeDisplay').style.display = 'flex';
+        btn.disabled = false;
+    } else {
+        document.getElementById('changeDisplay').style.display = 'none';
+        btn.disabled = true;
+    }
+}
+
+function confirmCashPayment() {
+    const tendered = parseFloat(document.getElementById('amountTendered').value) || 0;
+    closeModal('cashModal');
+    submitSale(tendered);
+}
+
+function submitSale(amountPaid) {
+    const items = Object.values(cart);
+    const discount = getDiscount();
+    const grand = getGrandTotal();
+    const method = document.querySelector('input[name="paymentMethod"]:checked').value;
+    const refNumber = document.getElementById('refNumber').value;
+    const customerId = document.getElementById('customerSelect').value;
+    const walkinPhone = document.getElementById('walkinPhone').value.trim();
+    if (method !== 'cash') amountPaid = grand;
+
+    // Determine which customer mode is active
+    const isWalkin = document.getElementById('walkinDiv').style.display !== 'none';
+    const finalCustomerId = !isWalkin ? (customerId || null) : null;
+    const finalPhone = isWalkin ? (walkinPhone || null) : null;
+
+    const payload = {
+        cart: items.map(i => ({ product_id: i.id, quantity: i.qty })),
+        discount: discount,
+        customer_id: finalCustomerId,
+        walk_in_phone: finalPhone,
+        new_customer_data: (isWalkin && pendingNewCustomer) ? pendingNewCustomer : null,
+        payment_method: method,
+        amount_paid: amountPaid,
+        reference_number: refNumber || null
+    };
+
+    fetch('/sales/checkout', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken()
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            if (data.auto_created_customer && data.new_customer_name) {
+                showToast(data.new_customer_name + ' has been registered as a customer!', 'success');
+            }
+            window.location.href = '/receipts/' + data.sale_id;
+        } else {
+            showToast(data.message, 'danger');
+        }
+    })
+    .catch(() => showToast('Network error. Please try again.', 'danger'));
+}
+
+// ─── PRODUCT SEARCH / FILTER ─────────────────────────────────────────────────
+document.getElementById('posSearch').addEventListener('input', function() {
+    const q = this.value.toLowerCase();
+    document.querySelectorAll('.product-card').forEach(card => {
+        const matches = card.dataset.name.toLowerCase().includes(q) ||
+                        card.dataset.category.toLowerCase().includes(q);
+        card.style.display = matches ? '' : 'none';
+    });
+});
+
+document.getElementById('barcodeInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+        const bc = this.value.trim();
+        if (!bc) return;
+        const card = document.querySelector(`.product-card[data-barcode="${bc}"]`);
+        if (card) { addToCart(card); this.value = ''; }
+        else showToast('No product found for barcode: ' + bc, 'warning');
+    }
+});
+
+document.getElementById('categoryTabs').addEventListener('click', function(e) {
+    if (!e.target.classList.contains('cat-tab')) return;
+    document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+    e.target.classList.add('active');
+    const cat = e.target.dataset.cat;
+    document.querySelectorAll('.product-card').forEach(card => {
+        card.style.display = (cat === 'all' || card.dataset.category === cat) ? '' : 'none';
+    });
+});
+
+function getCsrfToken() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.content : '';
+}
+</script>
+{% endblock %}

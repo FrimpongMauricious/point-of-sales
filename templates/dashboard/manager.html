@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block title %}Manager Dashboard — {{ STORE_NAME }}{% endblock %}
+{% block page_title %}Manager Dashboard{% endblock %}
+
+{% block content %}
+<div class="welcome-banner">
+    <h2>Welcome back, <strong>{{ current_user.username }}</strong> 👋</h2>
+    <p>Here's your store overview for today.</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#F0FDF4;"><i class="fas fa-receipt"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ total_sales_today }}</span>
+            <span class="stat-label">Sales Today</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#FFF7ED;"><i class="fas fa-coins"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(total_revenue_today) }}</span>
+            <span class="stat-label">Revenue Today</span>
+        </div>
+    </div>
+    <div class="stat-card {% if low_stock > 0 %}stat-card-warning{% endif %}">
+        <div class="stat-icon" style="background:#FEF9C3;"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ low_stock }}</span>
+            <span class="stat-label">Low Stock Alerts</span>
+        </div>
+    </div>
+</div>
+
+<div class="grid-2">
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Quick Actions</h3>
+        </div>
+        <div class="quick-links">
+            <a href="{{ url_for('products.list_products') }}" class="quick-link">
+                <span class="ql-icon"><i class="fas fa-box"></i></span><span>Products</span>
+            </a>
+            <a href="{{ url_for('inventory.overview') }}" class="quick-link">
+                <span class="ql-icon"><i class="fas fa-warehouse"></i></span><span>Inventory</span>
+            </a>
+            <a href="{{ url_for('customers.list_customers') }}" class="quick-link">
+                <span class="ql-icon"><i class="fas fa-users"></i></span><span>Customers</span>
+            </a>
+            <a href="{{ url_for('reports.index') }}" class="quick-link">
+                <span class="ql-icon"><i class="fas fa-chart-bar"></i></span><span>Reports</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title">Recent Sales</h3>
+            <a href="{{ url_for('sales.history') }}" class="btn btn-sm btn-outline">View All</a>
+        </div>
+        {% if recent_sales %}
+        <table class="table">
+            <thead>
+                <tr><th>#</th><th>Cashier</th><th>Amount</th><th>Time</th></tr>
+            </thead>
+            <tbody>
+                {% for sale in recent_sales %}
+                <tr>
+                    <td><a href="{{ url_for('receipts.receipt', sale_id=sale.id) }}">#{{ sale.id }}</a></td>
+                    <td>{{ sale.cashier.username }}</td>
+                    <td>{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(sale.total_amount) }}</td>
+                    <td>{{ sale.created_at.strftime('%H:%M') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="empty-state">No sales yet today.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

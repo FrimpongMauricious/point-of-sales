@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% block title %}Reports — {{ STORE_NAME }}{% endblock %}
+{% block page_title %}Reports & Analytics{% endblock %}
+
+{% block extra_css %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<!-- Date Range Filter -->
+<div class="card" style="margin-bottom:1.5rem;">
+    <form method="GET" action="{{ url_for('reports.index') }}" class="date-filter-form">
+        <div class="form-group">
+            <label class="form-label">Start Date</label>
+            <input type="date" name="start_date" class="form-input" value="{{ start_date }}">
+        </div>
+        <div class="form-group">
+            <label class="form-label">End Date</label>
+            <input type="date" name="end_date" class="form-input" value="{{ end_date }}">
+        </div>
+        <button type="submit" class="btn btn-primary" style="align-self:flex-end;">Apply Filter</button>
+    </form>
+</div>
+
+<!-- Today Summary -->
+<div class="stats-grid" style="margin-bottom:1.5rem;">
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#F0FDF4;"><i class="fas fa-calendar-day"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ daily_count }}</span>
+            <span class="stat-label">Sales Today</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#EFF6FF;"><i class="fas fa-coins"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(daily_revenue) }}</span>
+            <span class="stat-label">Revenue Today</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#F0FDF4;"><i class="fas fa-chart-line"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(total_revenue) }}</span>
+            <span class="stat-label">Period Revenue</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#FEF3C7;"><i class="fas fa-chart-line"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(gross_profit) }}</span>
+            <span class="stat-label">Gross Profit</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#FEE2E2;"><i class="fas fa-tag"></i></div>
+        <div class="stat-info">
+            <span class="stat-value">{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(total_cost) }}</span>
+            <span class="stat-label">Total Cost</span>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="grid-2" style="margin-bottom:1.5rem;">
+    <div class="card">
+        <div class="card-header"><h3 class="card-title">Sales Over Time</h3></div>
+        <canvas id="salesLineChart" height="200"></canvas>
+    </div>
+    <div class="card">
+        <div class="card-header"><h3 class="card-title">Payment Methods</h3></div>
+        <canvas id="paymentDoughnut" height="200"></canvas>
+    </div>
+</div>
+
+<div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-header"><h3 class="card-title">Top Selling Products</h3></div>
+    <canvas id="topProductsBar" height="120"></canvas>
+</div>
+
+<!-- Inventory Report -->
+<div class="card" style="margin-bottom:1.5rem;">
+    <div class="card-header"><h3 class="card-title">Inventory Status</h3></div>
+    <table class="table">
+        <thead>
+            <tr><th>Product</th><th>Category</th><th>Stock</th><th>Status</th></tr>
+        </thead>
+        <tbody>
+            {% for product in products %}
+            <tr>
+                <td>{{ product.product_name }}</td>
+                <td>{{ product.category }}</td>
+                <td>{{ product.quantity }}</td>
+                <td>
+                    {% if product.quantity <= 5 %}
+                    <span class="badge badge-danger">Critical</span>
+                    {% elif product.quantity <= 15 %}
+                    <span class="badge badge-warning">Low</span>
+                    {% else %}
+                    <span class="badge badge-success">In Stock</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Cashier Performance -->
+<div class="card">
+    <div class="card-header"><h3 class="card-title">Cashier Performance</h3></div>
+    <table class="table">
+        <thead>
+            <tr><th>Cashier</th><th>Sales Count</th><th>Total Revenue</th></tr>
+        </thead>
+        <tbody>
+            {% for perf in cashier_performance %}
+            <tr>
+                <td><strong>{{ perf.username }}</strong></td>
+                <td>{{ perf.sale_count }}</td>
+                <td>{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(perf.total_revenue or 0) }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="3" class="empty-state">No sales in this period.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const salesDates = {{ sales_dates | tojson }};
+const salesRevenue = {{ sales_revenue | tojson }};
+const topNames = {{ top_product_names | tojson }};
+const topQtys = {{ top_product_qtys | tojson }};
+const paymentLabels = {{ payment_labels | tojson }};
+const paymentCounts = {{ payment_counts | tojson }};
+
+// Sales line chart
+new Chart(document.getElementById('salesLineChart'), {
+    type: 'line',
+    data: {
+        labels: salesDates,
+        datasets: [{
+            label: 'Revenue',
+            data: salesRevenue,
+            borderColor: '#2563EB',
+            backgroundColor: 'rgba(37,99,235,0.08)',
+            tension: 0.4,
+            fill: true,
+            pointBackgroundColor: '#2563EB'
+        }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+});
+
+// Doughnut payment
+new Chart(document.getElementById('paymentDoughnut'), {
+    type: 'doughnut',
+    data: {
+        labels: paymentLabels,
+        datasets: [{ data: paymentCounts, backgroundColor: ['#2563EB','#10B981','#F59E0B','#EF4444'] }]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+});
+
+// Top products bar
+new Chart(document.getElementById('topProductsBar'), {
+    type: 'bar',
+    data: {
+        labels: topNames,
+        datasets: [{
+            label: 'Units Sold',
+            data: topQtys,
+            backgroundColor: '#2563EB',
+            borderRadius: 6
+        }]
+    },
+    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+});
+</script>
+{% endblock %}

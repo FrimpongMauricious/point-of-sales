@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Database (don't push local data)
+*.db
+*.sqlite3
+
+# Claude Code local settings
+.claude/
+
+# Environment variables
+.env
+instance/
