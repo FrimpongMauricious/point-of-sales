@@ -109,12 +109,12 @@
                 <div class="total-row">
                     <span>Discount</span>
                     <div class="discount-input">
-                        <input type="number" id="discountInput" value="0" min="0" step="0.01" oninput="updateTotals()">
-                        <select id="discountType" onchange="updateTotals()">
-                            <option value="flat">{{ CURRENCY_SYMBOL }}</option>
-                            <option value="percent">%</option>
-                        </select>
+                        <input type="number" id="discountInput" value="0" min="0" max="100" step="0.1" oninput="onManualDiscount()">
+                        <span style="padding:0 .5rem;font-weight:600;color:var(--text-muted);">%</span>
                     </div>
+                </div>
+                <div id="loyaltyDiscountNotice" style="display:none;font-size:.75rem;color:#10B981;text-align:right;padding:0 0 .3rem;margin-top:-.3rem;">
+                    <i class="fas fa-star"></i> <span id="loyaltyDiscountText"></span>
                 </div>
                 <div class="total-row">
                     <span>Tax ({{ (tax_rate * 100)|int }}%)</span>
@@ -144,7 +144,7 @@
                         <select id="customerSelect" class="form-input" style="margin-top:.5rem;">
                             <option value="">— None / Walk-in —</option>
                             {% for customer in customers %}
-                            <option value="{{ customer.id }}">{{ customer.name }} ({{ customer.loyalty_points }} pts)</option>
+                            <option value="{{ customer.id }}" data-loyalty="{{ customer.loyalty_points }}">{{ customer.name }} ({{ customer.loyalty_points }} pts)</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -405,10 +405,8 @@ function clearCart() {
 function updateTotals() {
     const items = Object.values(cart);
     const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-    const discountVal = parseFloat(document.getElementById('discountInput').value) || 0;
-    const discountType = document.getElementById('discountType').value;
-    let discount = discountType === 'percent' ? (subtotal * discountVal / 100) : discountVal;
-    discount = Math.min(discount, subtotal);
+    const discountPct = Math.min(parseFloat(document.getElementById('discountInput').value) || 0, 100);
+    const discount = Math.min(subtotal * discountPct / 100, subtotal);
     const taxable = subtotal - discount;
     const tax = taxable * TAX_RATE;
     const grand = taxable + tax;
@@ -421,20 +419,35 @@ function updateTotals() {
 function getGrandTotal() {
     const items = Object.values(cart);
     const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-    const discountVal = parseFloat(document.getElementById('discountInput').value) || 0;
-    const discountType = document.getElementById('discountType').value;
-    let discount = discountType === 'percent' ? (subtotal * discountVal / 100) : discountVal;
-    discount = Math.min(discount, subtotal);
+    const discountPct = Math.min(parseFloat(document.getElementById('discountInput').value) || 0, 100);
+    const discount = Math.min(subtotal * discountPct / 100, subtotal);
     return (subtotal - discount) * (1 + TAX_RATE);
 }
 
 function getDiscount() {
     const items = Object.values(cart);
     const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
-    const discountVal = parseFloat(document.getElementById('discountInput').value) || 0;
-    const discountType = document.getElementById('discountType').value;
-    let discount = discountType === 'percent' ? (subtotal * discountVal / 100) : discountVal;
-    return Math.min(discount, subtotal);
+    const discountPct = Math.min(parseFloat(document.getElementById('discountInput').value) || 0, 100);
+    return Math.min(subtotal * discountPct / 100, subtotal);
+}
+
+function onManualDiscount() {
+    document.getElementById('loyaltyDiscountNotice').style.display = 'none';
+    updateTotals();
+}
+
+function applyLoyaltyDiscount(pts) {
+    const rate = Math.floor(pts / 100);
+    const notice = document.getElementById('loyaltyDiscountNotice');
+    const noticeText = document.getElementById('loyaltyDiscountText');
+    document.getElementById('discountInput').value = rate > 0 ? rate : 0;
+    updateTotals();
+    if (rate > 0) {
+        noticeText.textContent = `Loyalty discount: ${rate}% (${pts} pts)`;
+        notice.style.display = 'block';
+    } else {
+        notice.style.display = 'none';
+    }
 }
 
 // ─── LEFT PANEL VIEWS ────────────────────────────────────────────────────────
@@ -542,8 +555,11 @@ function lookupPhone() {
         if (data.found) {
             // Existing registered customer — auto-link
             statusEl.className = 'phone-status phone-status-found';
-            statusEl.innerHTML = `<strong><i class="fas fa-check"></i> ${escHtml(data.name)}</strong> &mdash; ${data.loyalty_points} loyalty pts<br>
+            const loyaltyRate = Math.floor(data.loyalty_points / 100);
+            const loyaltyNote = loyaltyRate > 0 ? ` &mdash; <span style="color:#10B981;">${loyaltyRate}% loyalty discount applied</span>` : '';
+            statusEl.innerHTML = `<strong><i class="fas fa-check"></i> ${escHtml(data.name)}</strong> &mdash; ${data.loyalty_points} loyalty pts${loyaltyNote}<br>
                                   <small>Linked to this sale automatically</small>`;
+            applyLoyaltyDiscount(data.loyalty_points);
         } else if (data.visit_count >= 2) {
             // 3rd visit — open registration modal immediately
             isThirdVisit = true;
@@ -757,5 +773,12 @@ function getCsrfToken() {
     const meta = document.querySelector('meta[name="csrf-token"]');
     return meta ? meta.content : '';
 }
+
+// Auto-apply loyalty discount when existing customer is selected
+document.getElementById('customerSelect').addEventListener('change', function() {
+    const opt = this.options[this.selectedIndex];
+    const pts = parseInt(opt.dataset.loyalty || '0');
+    applyLoyaltyDiscount(pts);
+});
 </script>
 {% endblock %}

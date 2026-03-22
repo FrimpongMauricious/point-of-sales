@@ -65,7 +65,11 @@
 <div class="grid-2" style="margin-bottom:1.5rem;">
     <div class="card">
         <div class="card-header"><h3 class="card-title">Sales Over Time</h3></div>
-        <canvas id="salesLineChart" height="200"></canvas>
+        <div style="position:relative; height:250px;">
+            <canvas id="salesLineChart"></canvas>
+        </div>
+        <p id="salesLineEmpty" style="display:none; text-align:center; color:#9CA3AF; padding:2rem 0;">No sales data for this period.</p>
+        <div id="salesTrendLabel" style="text-align:center; font-size:.85rem; font-weight:600; padding:.5rem 1rem .75rem; letter-spacing:.01em;"></div>
     </div>
     <div class="card">
         <div class="card-header"><h3 class="card-title">Payment Methods</h3></div>
@@ -137,23 +141,68 @@ const topQtys = {{ top_product_qtys | tojson }};
 const paymentLabels = {{ payment_labels | tojson }};
 const paymentCounts = {{ payment_counts | tojson }};
 
-// Sales line chart
-new Chart(document.getElementById('salesLineChart'), {
-    type: 'line',
-    data: {
-        labels: salesDates,
-        datasets: [{
-            label: 'Revenue',
-            data: salesRevenue,
-            borderColor: '#2563EB',
-            backgroundColor: 'rgba(37,99,235,0.08)',
-            tension: 0.4,
-            fill: true,
-            pointBackgroundColor: '#2563EB'
-        }]
-    },
-    options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
-});
+// Sales line chart — trend detection
+function getSalesTrend(data) {
+    if (data.length < 2) return 'stagnant';
+    const mid = Math.floor(data.length / 2);
+    const avgFirst  = data.slice(0, mid).reduce((a, b) => a + b, 0) / mid;
+    const avgSecond = data.slice(mid).reduce((a, b) => a + b, 0) / (data.length - mid);
+    const change = avgFirst > 0 ? (avgSecond - avgFirst) / avgFirst : 0;
+    if (change > 0.05)  return 'increasing';
+    if (change < -0.05) return 'declining';
+    return 'stagnant';
+}
+
+const TREND_CFG = {
+    increasing: { color: '#10B981', bg: 'rgba(16,185,129,0.08)', icon: '▲', label: 'Increasing — Sales are trending upward'   },
+    declining:  { color: '#EF4444', bg: 'rgba(239,68,68,0.08)',  icon: '▼', label: 'Declining — Sales are trending downward'   },
+    stagnant:   { color: '#2563EB', bg: 'rgba(37,99,235,0.08)',  icon: '●', label: 'Stagnant — Sales are relatively flat'       }
+};
+
+if (salesDates.length === 0) {
+    document.getElementById('salesLineChart').style.display = 'none';
+    document.getElementById('salesLineEmpty').style.display = 'block';
+} else {
+    const trend = getSalesTrend(salesRevenue);
+    const tc = TREND_CFG[trend];
+
+    // Trend label under the chart
+    const trendEl = document.getElementById('salesTrendLabel');
+    trendEl.innerHTML = `<span style="color:${tc.color};">${tc.icon} ${tc.label}</span>`;
+
+    new Chart(document.getElementById('salesLineChart'), {
+        type: 'line',
+        data: {
+            labels: salesDates,
+            datasets: [{
+                label: 'Revenue',
+                data: salesRevenue,
+                borderColor: tc.color,
+                backgroundColor: tc.bg,
+                tension: 0.4,
+                fill: true,
+                pointBackgroundColor: tc.color,
+                pointHoverBackgroundColor: tc.color
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        afterBody: function() {
+                            return [``, `Trend: ${tc.icon} ${tc.label.split(' — ')[0]}`];
+                        },
+                        labelTextColor: function() { return tc.color; }
+                    }
+                }
+            },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+}
 
 // Doughnut payment
 new Chart(document.getElementById('paymentDoughnut'), {
@@ -166,6 +215,7 @@ new Chart(document.getElementById('paymentDoughnut'), {
 });
 
 // Top products bar
+const barColors = ['#2563EB','#10B981','#F59E0B','#EF4444','#8B5CF6','#EC4899','#14B8A6','#F97316','#6366F1','#84CC16'];
 new Chart(document.getElementById('topProductsBar'), {
     type: 'bar',
     data: {
@@ -173,7 +223,7 @@ new Chart(document.getElementById('topProductsBar'), {
         datasets: [{
             label: 'Units Sold',
             data: topQtys,
-            backgroundColor: '#2563EB',
+            backgroundColor: topNames.map((_, i) => barColors[i % barColors.length]),
             borderRadius: 6
         }]
     },

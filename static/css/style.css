@@ -1,5 +1,5 @@
 /* ===========================
-   QuickMart POS — style.css
+   QuickMart POS - style.css
    =========================== */
 
 /* Variables */
@@ -99,7 +99,7 @@ a:hover { text-decoration: underline; }
 .topbar-right { display: flex; align-items: center; gap: 1rem; }
 .topbar-user { display: flex; align-items: center; gap: .5rem; color: var(--text-muted); font-size: .875rem; }
 
-/* Content — scrollable for all regular pages */
+/* Content - scrollable for all regular pages */
 .content {
     flex: 1;
     padding: 1.5rem;
@@ -232,7 +232,7 @@ textarea.form-input { resize: vertical; }
 /* Modal */
 .modal-overlay {
     display: none; position: fixed; inset: 0; z-index: 200;
-    background: rgba(0,0,0,.4); backdrop-filter: blur(3px);
+    background: rgba(0,0,0,.4); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
     align-items: center; justify-content: center;
 }
 .modal-overlay.open { display: flex; animation: fadeIn .15s; }
@@ -445,12 +445,22 @@ textarea.form-input { resize: vertical; }
 }
 .product-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-md); }
 .product-card:active { transform: translateY(0); }
-/* Persistent green border — stays until another card is clicked */
+/* Persistent green border - stays until another card is clicked */
 .product-card-selected { border-color: var(--accent) !important; box-shadow: 0 0 0 3px rgba(16,185,129,.15) !important; }
 .product-card-name { font-weight: 700; font-size: .85rem; color: var(--text); line-height: 1.3; }
 .product-card-cat { font-size: .7rem; color: var(--text-muted); }
-.product-card-price { font-size: 1rem; font-weight: 700; color: var(--primary); margin-top: .25rem; }
-.product-card-stock { font-size: .72rem; color: var(--text-muted); }
+.product-card-price {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #fff;
+    background: var(--primary);
+    border-radius: 6px;
+    padding: .25rem .5rem;
+    margin-top: .4rem;
+    display: inline-block;
+    letter-spacing: .01em;
+}
+.product-card-stock { font-size: .72rem; color: var(--text-muted); margin-top: .1rem; }
 .stock-critical { color: var(--danger) !important; font-weight: 600; }
 .stock-low { color: var(--warning) !important; font-weight: 600; }
 

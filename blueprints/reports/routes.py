@@ -3,7 +3,7 @@ from flask_login import login_required
 from models import db, Sale, SaleItem, Product, User, Payment
 from blueprints.auth.routes import role_required
 from datetime import date, datetime, timedelta
-from sqlalchemy import func
+from sqlalchemy import func, text
 
 reports_bp = Blueprint('reports', __name__, url_prefix='/reports')
 
@@ -39,7 +39,7 @@ def index():
         Sale.created_at >= start_dt,
         Sale.created_at <= end_dt,
         Sale.status == 'completed'
-    ).group_by(func.date(Sale.created_at)).order_by('sale_date').all()
+    ).group_by(func.date(Sale.created_at)).order_by(text('sale_date')).all()
 
     sales_dates = [str(r.sale_date) for r in sales_over_time]
     sales_revenue = [round(r.revenue, 2) for r in sales_over_time]
