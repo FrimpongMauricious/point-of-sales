@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Receipt #{{ sale.id }} — {{ STORE_NAME }}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -15,7 +16,7 @@
         }
     </style>
 </head>
-<body style="background:#F1F5F9; min-height:100vh; display:flex; align-items:flex-start; justify-content:center; padding:2rem;">
+<body style="background:#F1F5F9; min-height:100vh; display:flex; align-items:flex-start; justify-content:center; padding:1rem 0.5rem;">
 
 <div class="receipt-wrapper">
     <!-- Print / Back buttons -->
@@ -116,7 +117,7 @@
             {% endif %}
             {% if sale.payment.reference_number %}
             <div class="receipt-total-row">
-                <span>Reference #</span>
+                <span>Reference ID</span>
                 <span>{{ sale.payment.reference_number }}</span>
             </div>
             {% endif %}

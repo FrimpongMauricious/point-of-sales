@@ -187,7 +187,7 @@
                     </div>
                 </div>
                 <div class="form-group" id="refGroup" style="display:none;">
-                    <label class="form-label">Reference Number</label>
+                    <label class="form-label">Reference ID</label>
                     <input type="text" id="refNumber" class="form-input" placeholder="Transaction reference">
                 </div>
             </div>
@@ -238,6 +238,30 @@
         <div class="modal-footer" style="justify-content:space-between;">
             <button class="btn btn-outline" onclick="skipRegistration()">Skip — proceed as walk-in</button>
             <button class="btn btn-primary" onclick="confirmRegistration()"><i class="fas fa-check"></i> Save &amp; Continue</button>
+        </div>
+    </div>
+</div>
+
+<!-- Non-Cash Confirmation Modal -->
+<div class="modal-overlay" id="nonCashModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 id="nonCashModalTitle"><i class="fas fa-check-circle"></i> Confirm Payment</h3>
+        </div>
+        <div class="modal-body">
+            <p style="margin-bottom:1rem;">
+                Amount: <strong id="nonCashAmount" style="font-size:1.3rem;color:var(--primary);"></strong>
+            </p>
+            <div class="form-group">
+                <label class="form-label">Reference ID <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+                <input type="text" id="nonCashRef" class="form-input" placeholder="e.g. MoMo transaction ID">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('nonCashModal')">Cancel</button>
+            <button class="btn btn-primary btn-lg" id="confirmNonCashBtn" onclick="confirmNonCashPayment()">
+                <i class="fas fa-check"></i> Confirm Payment
+            </button>
         </div>
     </div>
 </div>
@@ -665,16 +689,36 @@ async function completeSale() {
 
     // Proceed to payment
     const method = document.querySelector('input[name="paymentMethod"]:checked').value;
+    const grand = getGrandTotal();
     if (method === 'cash') {
-        const grand = getGrandTotal();
         document.getElementById('cashTotal').textContent = CURRENCY + grand.toFixed(2);
         document.getElementById('amountTendered').value = '';
         document.getElementById('changeDisplay').style.display = 'none';
+        document.getElementById('shortfallWarning').style.display = 'none';
         document.getElementById('confirmCashBtn').disabled = true;
         openModal('cashModal');
     } else {
-        submitSale(0);
+        const labels = { mobile_money: 'Mobile Money', card: 'Bank Card' };
+        document.getElementById('nonCashModalTitle').innerHTML =
+            `<i class="fas fa-check-circle"></i> Confirm ${labels[method] || method} Payment`;
+        document.getElementById('nonCashAmount').textContent = CURRENCY + grand.toFixed(2);
+        document.getElementById('nonCashRef').value = '';
+        openModal('nonCashModal');
     }
+}
+
+function confirmNonCashPayment() {
+    const ref = document.getElementById('nonCashRef').value.trim();
+    document.getElementById('refNumber').value = ref;
+    closeModal('nonCashModal');
+    const btn = document.getElementById('confirmNonCashBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    submitSale(0);
+    setTimeout(() => {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check"></i> Confirm Payment';
+    }, 5000);
 }
 
 function calcChange() {
