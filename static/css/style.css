@@ -351,7 +351,7 @@ textarea.form-input { resize: vertical; }
     overflow-y: auto;
     max-height: 55vh;
 }
-.pos-search-bar { display: flex; gap: .75rem; }
+.pos-search-bar { display: flex; gap: .75rem; padding: .75rem; background: var(--card-bg); border-radius: var(--radius-sm); box-shadow: var(--shadow); }
 
 /* POS browser flex column */
 .pos-browser { display: flex; flex-direction: column; gap: .75rem; flex: 1; min-height: 0; overflow: hidden; }
@@ -598,40 +598,6 @@ textarea.form-input { resize: vertical; }
     .card-header { flex-direction: column; align-items: flex-start; }
     .header-actions { width: 100%; }
 
-    /* POS — switch to tabbed single-column layout */
-    .content.pos-content {
-        overflow-y: auto;
-        height: auto;
-        padding: 0;
-    }
-    .pos-layout {
-        grid-template-columns: 1fr;
-        height: auto;
-        gap: 0;
-        min-height: unset;
-    }
-    .pos-left {
-        overflow: visible;
-        min-height: unset;
-    }
-    .pos-left.mobile-hidden { display: none; }
-    .pos-browser {
-        overflow: visible;
-        flex: none;
-    }
-    .product-grid {
-        overflow: visible;
-        flex: none;
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-    }
-    .pos-right {
-        display: none;
-        border-radius: 0;
-        min-height: 100svh;
-    }
-    .pos-right.mobile-active { display: flex; }
-    .cart-bottom { max-height: none; }
-
     /* Mobile POS tabs */
     .pos-mobile-tabs {
         display: flex;
@@ -658,10 +624,58 @@ textarea.form-input { resize: vertical; }
         line-height: 1.4;
     }
 
-    /* Search bar stacks */
-    .pos-search-bar { flex-direction: column; }
+    /* POS — tabbed single-column layout */
+    .content.pos-content {
+        overflow-y: auto;
+        height: auto;
+        padding: 0;
+    }
+    .pos-layout {
+        display: block;  /* kill grid, let tabs control visibility */
+        height: auto;
+    }
+
+    /* Products panel */
+    .pos-left {
+        display: block;
+        overflow: visible;
+        padding: .75rem;
+        gap: .75rem;
+    }
+    .pos-left.mobile-hidden { display: none !important; }
+    .pos-browser {
+        display: flex;
+        flex-direction: column;
+        gap: .75rem;
+        overflow: visible;
+    }
+    .product-grid {
+        overflow: visible;
+        height: auto;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    }
+
+    /* Search bar stacks vertically */
+    .pos-search-bar {
+        flex-direction: column;
+        box-shadow: none;
+        padding: 0;
+        background: transparent;
+    }
     .pos-search-bar .search-box { width: 100% !important; }
     .search-input { width: 100% !important; }
+
+    /* Cart panel — full page when active */
+    .pos-right {
+        display: none;
+        flex-direction: column;
+        border-radius: 0;
+        min-height: calc(100vh - var(--topbar-h) - 44px);
+        overflow-y: auto;
+    }
+    .pos-right.mobile-active { display: flex; }
+    .cart-body { flex: 1; min-height: 200px; }
+    .cart-bottom { max-height: none; overflow-y: visible; }
 }
 
 /* ---- Small phones (≤ 400px) ---- */

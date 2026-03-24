@@ -94,11 +94,11 @@ def _auto_seed(app):
 
     # Users
     admin = User(username='admin', email='admin@pixxxel.com', role='admin')
-    admin.set_password('admin123')
+    admin.set_password('admin@200')
     manager = User(username='manager', email='manager@pixxxel.com', role='manager')
-    manager.set_password('manager123')
+    manager.set_password('manager@2004')
     cashier = User(username='cashier', email='cashier@pixxxel.com', role='cashier')
-    cashier.set_password('cashier123')
+    cashier.set_password('cashier@2004')
     db.session.add_all([admin, manager, cashier])
 
     # Products
