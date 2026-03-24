@@ -85,6 +85,7 @@ def create_app():
     return app
 
 
+app = create_app()
+
 if __name__ == '__main__':
-    app = create_app()
     app.run(debug=os.environ.get('FLASK_DEBUG', 'false').lower() == 'true')
