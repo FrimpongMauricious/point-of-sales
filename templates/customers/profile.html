@@ -48,6 +48,7 @@
             <h3 class="card-title">Purchase History</h3>
         </div>
         {% if sales %}
+        <div class="table-responsive">
         <table class="table">
             <thead>
                 <tr>
@@ -70,6 +71,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
         {% else %}
         <p class="empty-state">No purchases yet.</p>
         {% endif %}

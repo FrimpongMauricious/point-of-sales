@@ -11,7 +11,7 @@ class Config:
     # Business Configuration
     STORE_NAME = 'Pixxxel Supermarket'
     CURRENCY_SYMBOL = '₵'
-    TAX_RATE = 0.05  # 5%
+    TAX_RATE = 0.00  # No tax (Ghana retail)
     LOW_STOCK_THRESHOLD = 15
     CRITICAL_STOCK_THRESHOLD = 5
     LOYALTY_POINTS_RATE = 1000  # 1 point per ₵1000 spent

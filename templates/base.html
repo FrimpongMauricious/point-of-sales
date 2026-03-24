@@ -76,11 +76,17 @@
         </div>
     </aside>
 
+    <!-- Sidebar backdrop (mobile) -->
+    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="closeSidebar()"></div>
+
     <!-- Main content -->
     <div class="main-wrapper">
         <!-- Top bar -->
         <header class="topbar">
-            <div class="topbar-left">
+            <div class="topbar-left" style="display:flex;align-items:center;gap:.5rem;">
+                <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Toggle menu">
+                    <i class="fas fa-bars"></i>
+                </button>
                 <h1 class="page-title">{% block page_title %}{% endblock %}</h1>
             </div>
             <div class="topbar-right">

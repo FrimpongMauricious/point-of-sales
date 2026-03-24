@@ -67,6 +67,31 @@ function createToastContainer() {
     return c;
 }
 
+// Sidebar toggle (mobile)
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    const isOpen = sidebar.classList.contains('open');
+    if (isOpen) { closeSidebar(); } else {
+        sidebar.classList.add('open');
+        if (backdrop) backdrop.classList.add('open');
+    }
+}
+function closeSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    sidebar.classList.remove('open');
+    if (backdrop) backdrop.classList.remove('open');
+}
+// Close sidebar when a nav link is clicked on mobile
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.nav-item').forEach(link => {
+        link.addEventListener('click', function() {
+            if (window.innerWidth <= 900) closeSidebar();
+        });
+    });
+});
+
 // Escape key closes modals
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {

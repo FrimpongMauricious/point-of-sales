@@ -59,6 +59,7 @@
             <a href="{{ url_for('sales.history') }}" class="btn btn-sm btn-outline">View All</a>
         </div>
         {% if recent_sales %}
+        <div class="table-responsive">
         <table class="table">
             <thead>
                 <tr><th>#</th><th>Cashier</th><th>Amount</th><th>Time</th></tr>
@@ -74,6 +75,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
         {% else %}
         <p class="empty-state">No sales yet today.</p>
         {% endif %}

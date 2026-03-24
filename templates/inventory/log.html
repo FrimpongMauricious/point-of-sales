@@ -8,6 +8,7 @@
         <h3 class="card-title">Stock Change History</h3>
         <a href="{{ url_for('inventory.overview') }}" class="btn btn-outline btn-sm">← Back</a>
     </div>
+    <div class="table-responsive">
     <table class="table">
         <thead>
             <tr>
@@ -48,5 +49,6 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
 </div>
 {% endblock %}

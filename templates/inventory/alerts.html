@@ -10,6 +10,7 @@
     </div>
 
     {% if products %}
+    <div class="table-responsive">
     <table class="table">
         <thead>
             <tr>
@@ -42,6 +43,7 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
     {% else %}
     <div class="empty-state-box">
         <p><i class="fas fa-check-circle"></i> All products have adequate stock levels.</p>

@@ -4,6 +4,17 @@
 {% block content_class %}pos-content{% endblock %}
 
 {% block content %}
+<!-- Mobile tab bar (hidden on desktop via CSS) -->
+<div class="pos-mobile-tabs" id="posMobileTabs">
+    <button class="pos-mobile-tab active" id="tabProducts" onclick="posSwitchTab('products')">
+        <i class="fas fa-th"></i> Products
+    </button>
+    <button class="pos-mobile-tab" id="tabCart" onclick="posSwitchTab('cart')">
+        <i class="fas fa-shopping-cart"></i> Cart
+        <span class="pos-mobile-cart-badge" id="mobileCartBadge" style="display:none;"></span>
+    </button>
+</div>
+
 <div class="pos-layout">
 
     <!-- ===== LEFT PANEL ===== -->
@@ -115,10 +126,6 @@
                 </div>
                 <div id="loyaltyDiscountNotice" style="display:none;font-size:.75rem;color:#10B981;text-align:right;padding:0 0 .3rem;margin-top:-.3rem;">
                     <i class="fas fa-star"></i> <span id="loyaltyDiscountText"></span>
-                </div>
-                <div class="total-row">
-                    <span>Tax ({{ (tax_rate * 100)|int }}%)</span>
-                    <span id="taxDisplay">{{ CURRENCY_SYMBOL }}0.00</span>
                 </div>
                 <div class="total-row total-grand">
                     <span>Grand Total</span>
@@ -252,6 +259,9 @@
                 <span>Change Due:</span>
                 <strong id="changeDue" style="color:#10B981;font-size:1.5rem;"></strong>
             </div>
+            <div id="shortfallWarning" style="display:none;margin-top:.75rem;padding:.65rem 1rem;background:#FEF2F2;border:1px solid #FECACA;border-radius:8px;color:#DC2626;font-weight:600;">
+                <i class="fas fa-exclamation-triangle"></i> <span id="shortfallText"></span>
+            </div>
         </div>
         <div class="modal-footer">
             <button class="btn btn-outline" onclick="closeModal('cashModal')">Cancel</button>
@@ -265,7 +275,6 @@
 
 {% block extra_js %}
 <script>
-const TAX_RATE = {{ tax_rate }};
 const CURRENCY = '{{ CURRENCY_SYMBOL }}';
 let cart = {};               // { productId: { id, name, price, stock, qty } }
 let selectedItemId = null;   // currently selected cart item for detail view
@@ -358,6 +367,7 @@ function renderCart() {
     `).join('');
 
     updateTotals();
+    updateMobileCartBadge();
 
     // If detail panel is open, refresh it
     if (selectedItemId && cart[selectedItemId]) {
@@ -407,12 +417,9 @@ function updateTotals() {
     const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
     const discountPct = Math.min(parseFloat(document.getElementById('discountInput').value) || 0, 100);
     const discount = Math.min(subtotal * discountPct / 100, subtotal);
-    const taxable = subtotal - discount;
-    const tax = taxable * TAX_RATE;
-    const grand = taxable + tax;
+    const grand = subtotal - discount;
 
     document.getElementById('subtotalDisplay').textContent = CURRENCY + subtotal.toFixed(2);
-    document.getElementById('taxDisplay').textContent = CURRENCY + tax.toFixed(2);
     document.getElementById('grandTotalDisplay').textContent = CURRENCY + grand.toFixed(2);
 }
 
@@ -421,7 +428,7 @@ function getGrandTotal() {
     const subtotal = items.reduce((s, i) => s + i.price * i.qty, 0);
     const discountPct = Math.min(parseFloat(document.getElementById('discountInput').value) || 0, 100);
     const discount = Math.min(subtotal * discountPct / 100, subtotal);
-    return (subtotal - discount) * (1 + TAX_RATE);
+    return subtotal - discount;
 }
 
 function getDiscount() {
@@ -675,12 +682,21 @@ function calcChange() {
     const grand = getGrandTotal();
     const change = tendered - grand;
     const btn = document.getElementById('confirmCashBtn');
+    const shortfallEl = document.getElementById('shortfallWarning');
+    const shortfallText = document.getElementById('shortfallText');
     if (change >= 0) {
         document.getElementById('changeDue').textContent = CURRENCY + change.toFixed(2);
         document.getElementById('changeDisplay').style.display = 'flex';
+        shortfallEl.style.display = 'none';
         btn.disabled = false;
+    } else if (tendered > 0) {
+        document.getElementById('changeDisplay').style.display = 'none';
+        shortfallText.textContent = 'Amount is short by ' + CURRENCY + Math.abs(change).toFixed(2) + '. Please collect more cash.';
+        shortfallEl.style.display = 'block';
+        btn.disabled = true;
     } else {
         document.getElementById('changeDisplay').style.display = 'none';
+        shortfallEl.style.display = 'none';
         btn.disabled = true;
     }
 }
@@ -772,6 +788,33 @@ document.getElementById('categoryTabs').addEventListener('click', function(e) {
 function getCsrfToken() {
     const meta = document.querySelector('meta[name="csrf-token"]');
     return meta ? meta.content : '';
+}
+
+// ─── MOBILE TAB SWITCHING ────────────────────────────────────────────────────
+function posSwitchTab(tab) {
+    const left  = document.querySelector('.pos-left');
+    const right = document.querySelector('.pos-right');
+    const tProd = document.getElementById('tabProducts');
+    const tCart = document.getElementById('tabCart');
+    if (tab === 'products') {
+        left.classList.remove('mobile-hidden');
+        right.classList.remove('mobile-active');
+        tProd.classList.add('active');
+        tCart.classList.remove('active');
+    } else {
+        left.classList.add('mobile-hidden');
+        right.classList.add('mobile-active');
+        tProd.classList.remove('active');
+        tCart.classList.add('active');
+    }
+}
+
+function updateMobileCartBadge() {
+    const badge = document.getElementById('mobileCartBadge');
+    if (!badge) return;
+    const total = Object.values(cart).reduce((s, i) => s + i.qty, 0);
+    if (total > 0) { badge.textContent = total; badge.style.display = 'inline-block'; }
+    else { badge.style.display = 'none'; }
 }
 
 // Auto-apply loyalty discount when existing customer is selected
