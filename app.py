@@ -1,3 +1,4 @@
+import os
 from flask import Flask, render_template
 from flask_login import LoginManager, current_user
 from flask_wtf.csrf import CSRFProtect
@@ -86,4 +87,4 @@ def create_app():
 
 if __name__ == '__main__':
     app = create_app()
-    app.run(debug=True)
+    app.run(debug=os.environ.get('FLASK_DEBUG', 'false').lower() == 'true')
