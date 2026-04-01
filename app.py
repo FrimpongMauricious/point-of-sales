@@ -1,4 +1,9 @@
 import os
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # python-dotenv not installed (production uses real env vars)
 from flask import Flask, render_template
 from flask_login import LoginManager, current_user
 from flask_wtf.csrf import CSRFProtect
@@ -95,11 +100,11 @@ def _auto_seed(app):
 
     # Users
     admin = User(username='admin', email='admin@pixxxel.com', role='admin')
-    admin.set_password('admin@200')
+    admin.set_password('admin@pixxxel')
     manager = User(username='manager', email='manager@pixxxel.com', role='manager')
-    manager.set_password('manager@2004')
+    manager.set_password('manager@pixxxel')
     cashier = User(username='cashier', email='cashier@pixxxel.com', role='cashier')
-    cashier.set_password('cashier@2004')
+    cashier.set_password('cashier@pixxxel')
     db.session.add_all([admin, manager, cashier])
 
     # Products

@@ -182,6 +182,41 @@ def customer_by_phone():
     })
 
 
+@sales_bp.route('/momo/initiate', methods=['POST'])
+@login_required
+def momo_initiate():
+    """Trigger a MoMo USSD push to the customer's phone."""
+    from services.momo import request_to_pay
+    data   = request.get_json() or {}
+    phone  = (data.get('phone') or '').strip()
+    amount = float(data.get('amount', 0))
+
+    if not phone:
+        return jsonify({'success': False, 'message': 'Phone number is required.'}), 400
+    if amount <= 0:
+        return jsonify({'success': False, 'message': 'Invalid amount.'}), 400
+
+    try:
+        result = request_to_pay(phone, amount, note=f'Pixxxel Supermarket – ₵{amount:.2f}')
+        return jsonify({'success': True, 'reference_id': result['reference_id']})
+    except Exception as e:
+        current_app.logger.error(f'MoMo initiate error: {e}')
+        return jsonify({'success': False, 'message': 'Could not reach MoMo service. Try again.'}), 502
+
+
+@sales_bp.route('/momo/status/<reference_id>')
+@login_required
+def momo_status(reference_id):
+    """Poll the status of a MoMo payment request."""
+    from services.momo import get_payment_status
+    try:
+        result = get_payment_status(reference_id)
+        return jsonify({'success': True, **result})
+    except Exception as e:
+        current_app.logger.error(f'MoMo status error: {e}')
+        return jsonify({'success': False, 'message': 'Could not check payment status.'}), 502
+
+
 @sales_bp.route('/history')
 @login_required
 def history():

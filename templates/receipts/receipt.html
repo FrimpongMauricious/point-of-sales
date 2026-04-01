@@ -14,6 +14,21 @@
             body { background: white !important; }
             .receipt-wrapper { box-shadow: none !important; }
         }
+        .item-barcode {
+            display: block;
+            margin: 3px 0 0 0;
+        }
+        .item-barcode svg {
+            max-width: 140px;
+            height: 36px;
+        }
+        .barcode-number {
+            font-size: 0.62rem;
+            color: #64748b;
+            letter-spacing: 0.04em;
+            display: block;
+            margin-top: 1px;
+        }
     </style>
 </head>
 <body style="background:#F1F5F9; min-height:100vh; display:flex; align-items:flex-start; justify-content:center; padding:1rem 0.5rem;">
@@ -73,7 +88,17 @@
             <tbody>
                 {% for item in sale.items %}
                 <tr>
-                    <td>{{ item.product.product_name }}</td>
+                    <td>
+                        {{ item.product.product_name }}
+                        {% if item.product.barcode %}
+                        <span class="item-barcode">
+                            <svg id="bc-{{ loop.index }}" class="barcode-svg"></svg>
+                            <span class="barcode-number">{{ item.product.barcode }}</span>
+                        </span>
+                        <div id="qr-{{ loop.index }}" style="margin-top:4px;"></div>
+                        <span style="font-size:0.6rem;color:#94a3b8;display:block;">Scan QR to reorder</span>
+                        {% endif %}
+                    </td>
                     <td style="text-align:center;">{{ item.quantity }}</td>
                     <td style="text-align:right;">{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(item.unit_price) }}</td>
                     <td style="text-align:right;">{{ CURRENCY_SYMBOL }}{{ "%.2f"|format(item.subtotal) }}</td>
@@ -131,5 +156,44 @@
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+    const baseUrl = '{{ config.APP_URL if config.APP_URL else request.host_url.rstrip("/") }}';
+    const itemData = [
+        {% for item in sale.items %}
+        {% if item.product.barcode %}
+        { index: '{{ loop.index }}', barcode: '{{ item.product.barcode }}' },
+        {% endif %}
+        {% endfor %}
+    ];
+
+    itemData.forEach(function (item) {
+        // Render CODE128 barcode
+        try {
+            JsBarcode('#bc-' + item.index, item.barcode, {
+                format: 'CODE128',
+                width: 1.8,
+                height: 40,
+                displayValue: false,
+                margin: 0,
+                background: 'transparent',
+                lineColor: '#1e293b'
+            });
+        } catch(e) {}
+
+        // Render QR code linking to POS with product pre-scanned
+        try {
+            new QRCode(document.getElementById('qr-' + item.index), {
+                text: baseUrl + '/sales/pos?scan=' + item.barcode,
+                width: 64,
+                height: 64,
+                colorDark: '#1e293b',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        } catch(e) {}
+    });
+</script>
 </body>
 </html>

@@ -21,13 +21,13 @@ with app.app_context():
 
     # Users
     admin = User(username='admin', email='admin@pixxxel.com', role='admin')
-    admin.set_password('admin@200')
+    admin.set_password('admin@pixxxel')
 
     manager = User(username='manager', email='manager@pixxxel.com', role='manager')
-    manager.set_password('manager@2004')
+    manager.set_password('manager@pixxxel')
 
     cashier = User(username='cashier', email='cashier@pixxxel.com', role='cashier')
-    cashier.set_password('cashier@2004')
+    cashier.set_password('cashier@pixxxel')
 
     db.session.add_all([admin, manager, cashier])
 

@@ -1,4 +1,6 @@
-from flask import Blueprint, render_template, request, jsonify, current_app
+import csv
+import io
+from flask import Blueprint, render_template, request, jsonify, current_app, Response
 from flask_login import login_required
 from models import db, Sale, SaleItem, Product, User, Payment
 from blueprints.auth.routes import role_required
@@ -119,3 +121,65 @@ def index():
                            gross_profit=gross_profit,
                            start_date=start_date,
                            end_date=end_date)
+
+
+@reports_bp.route('/export/sales')
+@login_required
+@role_required('admin', 'manager')
+def export_sales():
+    today = date.today()
+    start_date = request.args.get('start_date', (today - timedelta(days=30)).isoformat())
+    end_date = request.args.get('end_date', today.isoformat())
+    try:
+        start_dt = datetime.strptime(start_date, '%Y-%m-%d')
+        end_dt = datetime.strptime(end_date, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+    except ValueError:
+        start_dt = datetime.combine(today - timedelta(days=30), datetime.min.time())
+        end_dt = datetime.combine(today, datetime.max.time())
+
+    sales = Sale.query.filter(
+        Sale.created_at >= start_dt,
+        Sale.created_at <= end_dt,
+        Sale.status == 'completed'
+    ).order_by(Sale.created_at.desc()).all()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Sale ID', 'Date', 'Cashier', 'Customer', 'Payment Method', 'Discount', 'Total Amount'])
+    for s in sales:
+        writer.writerow([
+            s.id,
+            s.created_at.strftime('%Y-%m-%d %H:%M'),
+            s.cashier.username if s.cashier else '',
+            s.customer.name if s.customer else 'Walk-in',
+            s.payment_method.replace('_', ' ').title(),
+            s.discount,
+            s.total_amount
+        ])
+
+    output.seek(0)
+    filename = f"sales_{start_date}_to_{end_date}.csv"
+    return Response(output, mimetype='text/csv',
+                    headers={'Content-Disposition': f'attachment; filename={filename}'})
+
+
+@reports_bp.route('/export/inventory')
+@login_required
+@role_required('admin', 'manager')
+def export_inventory():
+    products = Product.query.order_by(Product.category, Product.product_name).all()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Product ID', 'Name', 'Category', 'Price (₵)', 'Cost Price (₵)', 'Stock', 'Supplier', 'Status'])
+    for p in products:
+        if p.quantity <= 5:
+            status = 'Critical'
+        elif p.quantity <= 15:
+            status = 'Low'
+        else:
+            status = 'In Stock'
+        writer.writerow([p.id, p.product_name, p.category, p.price, p.cost_price, p.quantity, p.supplier or '', status])
+
+    output.seek(0)
+    return Response(output, mimetype='text/csv',
+                    headers={'Content-Disposition': 'attachment; filename=inventory_report.csv'})

@@ -22,14 +22,14 @@
 
         <!-- VIEW 1: Product Browser (default) -->
         <div id="productBrowser" class="pos-browser">
-            <div class="pos-search-bar">
-                <div class="search-box" style="flex:1;">
+            <div class="pos-search-bar" style="flex-direction:column;">
+                <div class="search-box" style="width:100%;">
                     <span class="search-icon"><i class="fas fa-search"></i></span>
                     <input type="text" id="posSearch" class="search-input" placeholder="Search products by name...">
                 </div>
-                <div class="search-box" style="width:200px;">
+                <div class="search-box" style="width:100%;">
                     <span class="search-icon"><i class="fas fa-barcode"></i></span>
-                    <input type="text" id="barcodeInput" class="search-input" placeholder="Scan barcode...">
+                    <input type="text" id="barcodeInput" class="search-input" placeholder="Search products by barcode...">
                 </div>
             </div>
 
@@ -242,11 +242,64 @@
     </div>
 </div>
 
-<!-- Non-Cash Confirmation Modal -->
+<!-- Mobile Money Modal -->
+<div class="modal-overlay" id="momoModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3><i class="fas fa-mobile-alt"></i> Mobile Money Payment</h3>
+        </div>
+        <div class="modal-body">
+            <!-- Step 1: Enter phone -->
+            <div id="momoStep1">
+                <p style="margin-bottom:1rem;">
+                    Amount: <strong id="momoAmount" style="font-size:1.3rem;color:var(--primary);"></strong>
+                </p>
+                <div class="form-group">
+                    <label class="form-label">Customer MoMo Number</label>
+                    <input type="tel" id="momoPhone" class="form-input"
+                           placeholder="e.g. 0244123456" maxlength="13"
+                           oninput="this.value=this.value.replace(/[^0-9+]/,'')">
+                    <small style="color:var(--text-muted);font-size:.75rem;">MTN Ghana number only</small>
+                </div>
+            </div>
+            <!-- Step 2: Waiting for customer to approve -->
+            <div id="momoStep2" style="display:none;text-align:center;padding:1rem 0;">
+                <div style="font-size:2.5rem;margin-bottom:.75rem;">📱</div>
+                <p style="font-weight:600;font-size:1rem;margin-bottom:.5rem;">USSD prompt sent!</p>
+                <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.25rem;">
+                    Ask the customer to check their phone and enter their MoMo PIN to approve.
+                </p>
+                <div id="momoPollingStatus" style="display:flex;align-items:center;justify-content:center;gap:.5rem;color:var(--text-muted);">
+                    <i class="fas fa-spinner fa-spin"></i> Waiting for confirmation...
+                </div>
+            </div>
+            <!-- Step 3: Success -->
+            <div id="momoStep3" style="display:none;text-align:center;padding:1rem 0;">
+                <div style="font-size:2.5rem;margin-bottom:.75rem;">✅</div>
+                <p style="font-weight:700;font-size:1.1rem;color:#10B981;">Payment Confirmed!</p>
+                <p style="color:var(--text-muted);font-size:.85rem;margin-top:.4rem;" id="momoRefDisplay"></p>
+            </div>
+            <!-- Step 4: Failed -->
+            <div id="momoStep4" style="display:none;text-align:center;padding:1rem 0;">
+                <div style="font-size:2.5rem;margin-bottom:.75rem;">❌</div>
+                <p style="font-weight:700;font-size:1.1rem;color:#DC2626;">Payment Failed</p>
+                <p style="color:var(--text-muted);font-size:.85rem;margin-top:.4rem;" id="momoFailReason"></p>
+            </div>
+        </div>
+        <div class="modal-footer" id="momoFooter">
+            <button class="btn btn-outline" id="momoCancelBtn" onclick="closeMomoModal()">Cancel</button>
+            <button class="btn btn-primary btn-lg" id="momoSendBtn" onclick="sendMomoRequest()">
+                <i class="fas fa-paper-plane"></i> Send Payment Request
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Card / Other Non-Cash Modal -->
 <div class="modal-overlay" id="nonCashModal">
     <div class="modal">
         <div class="modal-header">
-            <h3 id="nonCashModalTitle"><i class="fas fa-check-circle"></i> Confirm Payment</h3>
+            <h3 id="nonCashModalTitle"><i class="fas fa-credit-card"></i> Confirm Payment</h3>
         </div>
         <div class="modal-body">
             <p style="margin-bottom:1rem;">
@@ -254,7 +307,7 @@
             </p>
             <div class="form-group">
                 <label class="form-label">Reference ID <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
-                <input type="text" id="nonCashRef" class="form-input" placeholder="e.g. MoMo transaction ID">
+                <input type="text" id="nonCashRef" class="form-input" placeholder="e.g. Card transaction ID">
             </div>
         </div>
         <div class="modal-footer">
@@ -697,10 +750,16 @@ async function completeSale() {
         document.getElementById('shortfallWarning').style.display = 'none';
         document.getElementById('confirmCashBtn').disabled = true;
         openModal('cashModal');
+    } else if (method === 'mobile_money') {
+        // Open MoMo modal
+        document.getElementById('momoAmount').textContent = CURRENCY + grand.toFixed(2);
+        document.getElementById('momoPhone').value = '';
+        showMomoStep(1);
+        openModal('momoModal');
     } else {
-        const labels = { mobile_money: 'Mobile Money', card: 'Bank Card' };
+        // Card
         document.getElementById('nonCashModalTitle').innerHTML =
-            `<i class="fas fa-check-circle"></i> Confirm ${labels[method] || method} Payment`;
+            `<i class="fas fa-credit-card"></i> Confirm Card Payment`;
         document.getElementById('nonCashAmount').textContent = CURRENCY + grand.toFixed(2);
         document.getElementById('nonCashRef').value = '';
         openModal('nonCashModal');
@@ -719,6 +778,120 @@ function confirmNonCashPayment() {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-check"></i> Confirm Payment';
     }, 5000);
+}
+
+// ─── MOMO FLOW ────────────────────────────────────────────────────────────────
+let momoPollingTimer = null;
+
+function showMomoStep(step) {
+    [1,2,3,4].forEach(n => {
+        document.getElementById('momoStep' + n).style.display = (n === step) ? '' : 'none';
+    });
+    const footer = document.getElementById('momoFooter');
+    const sendBtn = document.getElementById('momoSendBtn');
+    const cancelBtn = document.getElementById('momoCancelBtn');
+    if (step === 1) {
+        sendBtn.style.display = '';
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Payment Request';
+        cancelBtn.textContent = 'Cancel';
+    } else if (step === 2) {
+        sendBtn.style.display = 'none';
+        cancelBtn.textContent = 'Cancel';
+    } else if (step === 3) {
+        sendBtn.style.display = '';
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="fas fa-check"></i> Complete Sale';
+        sendBtn.onclick = completeMomoSale;
+        cancelBtn.style.display = 'none';
+    } else if (step === 4) {
+        sendBtn.style.display = '';
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="fas fa-redo"></i> Try Again';
+        sendBtn.onclick = () => { showMomoStep(1); sendBtn.onclick = sendMomoRequest; };
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.style.display = '';
+    }
+}
+
+function closeMomoModal() {
+    if (momoPollingTimer) { clearInterval(momoPollingTimer); momoPollingTimer = null; }
+    closeModal('momoModal');
+    // Reset send button onclick
+    document.getElementById('momoSendBtn').onclick = sendMomoRequest;
+}
+
+async function sendMomoRequest() {
+    const phone = document.getElementById('momoPhone').value.trim();
+    if (!phone) { showToast('Enter the customer\'s MoMo number', 'warning'); return; }
+
+    const grand = getGrandTotal();
+    const sendBtn = document.getElementById('momoSendBtn');
+    sendBtn.disabled = true;
+    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+
+    try {
+        const resp = await fetch('/sales/momo/initiate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+            body: JSON.stringify({ phone, amount: grand })
+        });
+        const data = await resp.json();
+
+        if (!data.success) {
+            showToast(data.message || 'Failed to send MoMo request', 'danger');
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Payment Request';
+            return;
+        }
+
+        // Switch to waiting screen and start polling
+        showMomoStep(2);
+        pollMomoStatus(data.reference_id);
+
+    } catch(e) {
+        showToast('Network error. Please try again.', 'danger');
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Payment Request';
+    }
+}
+
+function pollMomoStatus(referenceId) {
+    let attempts = 0;
+    const maxAttempts = 40; // 40 × 3s = 2 minutes timeout
+
+    momoPollingTimer = setInterval(async () => {
+        attempts++;
+        try {
+            const resp = await fetch('/sales/momo/status/' + referenceId, {
+                headers: { 'X-CSRFToken': getCsrfToken() }
+            });
+            const data = await resp.json();
+
+            if (data.status === 'SUCCESSFUL') {
+                clearInterval(momoPollingTimer); momoPollingTimer = null;
+                document.getElementById('momoRefDisplay').textContent = 'Reference ID: ' + referenceId;
+                document.getElementById('refNumber').value = referenceId;
+                showMomoStep(3);
+
+            } else if (data.status === 'FAILED') {
+                clearInterval(momoPollingTimer); momoPollingTimer = null;
+                const reason = data.reason || 'Payment was declined or timed out.';
+                document.getElementById('momoFailReason').textContent = reason;
+                showMomoStep(4);
+
+            } else if (attempts >= maxAttempts) {
+                clearInterval(momoPollingTimer); momoPollingTimer = null;
+                document.getElementById('momoFailReason').textContent = 'Payment timed out. Customer did not respond.';
+                showMomoStep(4);
+            }
+        } catch(e) { /* keep polling on network hiccups */ }
+    }, 3000);
+}
+
+function completeMomoSale() {
+    closeModal('momoModal');
+    submitSale(getGrandTotal());
 }
 
 function calcChange() {
@@ -809,15 +982,6 @@ document.getElementById('posSearch').addEventListener('input', function() {
     });
 });
 
-document.getElementById('barcodeInput').addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-        const bc = this.value.trim();
-        if (!bc) return;
-        const card = document.querySelector(`.product-card[data-barcode="${bc}"]`);
-        if (card) { addToCart(card); this.value = ''; }
-        else showToast('No product found for barcode: ' + bc, 'warning');
-    }
-});
 
 document.getElementById('categoryTabs').addEventListener('click', function(e) {
     if (!e.target.classList.contains('cat-tab')) return;
@@ -860,6 +1024,44 @@ function updateMobileCartBadge() {
     if (total > 0) { badge.textContent = total; badge.style.display = 'inline-block'; }
     else { badge.style.display = 'none'; }
 }
+
+
+document.getElementById('barcodeInput').addEventListener('input', function () {
+    const bc = this.value.trim();
+    if (!bc) {
+        document.querySelectorAll('.product-card').forEach(c => c.style.display = '');
+        return;
+    }
+    document.querySelectorAll('.product-card').forEach(card => {
+        card.style.display = card.dataset.barcode && card.dataset.barcode.includes(bc) ? '' : 'none';
+    });
+});
+
+document.getElementById('barcodeInput').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+        const bc = this.value.trim();
+        if (!bc) return;
+        const card = document.querySelector(`.product-card[data-barcode="${bc}"]`);
+        if (card) { addToCart(card); this.value = ''; document.querySelectorAll('.product-card').forEach(c => c.style.display = ''); }
+        else showToast('No product found for barcode: ' + bc, 'warning');
+    }
+});
+
+// Handle ?scan= from QR code on receipt — auto-add product to cart
+(function () {
+    const params = new URLSearchParams(window.location.search);
+    const bc = params.get('scan');
+    if (!bc) return;
+    const card = document.querySelector(`.product-card[data-barcode="${bc}"]`);
+    if (card) {
+        addToCart(card);
+        showToast('Product added from QR scan', 'success');
+        // Clean URL without reloading
+        window.history.replaceState({}, '', '/sales/pos');
+    } else {
+        showToast('Product not found for scanned barcode', 'warning');
+    }
+})();
 
 // Auto-apply loyalty discount when existing customer is selected
 document.getElementById('customerSelect').addEventListener('change', function() {

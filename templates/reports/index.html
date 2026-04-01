@@ -19,6 +19,14 @@
             <input type="date" name="end_date" class="form-input" value="{{ end_date }}">
         </div>
         <button type="submit" class="btn btn-primary" style="align-self:flex-end;">Apply Filter</button>
+        <a href="{{ url_for('reports.export_sales', start_date=start_date, end_date=end_date) }}"
+           class="btn btn-outline" style="align-self:flex-end;">
+            <i class="fas fa-file-csv"></i> Export Sales CSV
+        </a>
+        <a href="{{ url_for('reports.export_inventory') }}"
+           class="btn btn-outline" style="align-self:flex-end;">
+            <i class="fas fa-boxes"></i> Export Inventory CSV
+        </a>
     </form>
 </div>
 
