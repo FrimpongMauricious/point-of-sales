@@ -21,6 +21,7 @@ class Config:
     LOYALTY_POINTS_RATE = 1000  # 1 point per ₵1000 spent
 
     APP_URL = os.environ.get('APP_URL', '').rstrip('/')
+    OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 
     # MTN MoMo API
     MOMO_SUBSCRIPTION_KEY = os.environ.get('MOMO_SUBSCRIPTION_KEY', '')

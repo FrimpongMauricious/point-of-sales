@@ -123,5 +123,275 @@
 
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 {% block extra_js %}{% endblock %}
+
+{% if current_user.is_authenticated %}
+<!-- ===== PIXA AI ASSISTANT ===== -->
+<style>
+.pixa-btn {
+    position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 1000;
+    width: 56px; height: 56px; border-radius: 50%;
+    background: linear-gradient(135deg, #2563EB, #7C3AED);
+    border: none; cursor: pointer; box-shadow: 0 4px 20px rgba(37,99,235,.45);
+    display: flex; align-items: center; justify-content: center;
+    transition: transform .2s, box-shadow .2s;
+    color: #fff; font-size: 1.4rem;
+}
+.pixa-btn:hover { transform: scale(1.1); box-shadow: 0 6px 28px rgba(37,99,235,.55); }
+.pixa-btn .pixa-badge {
+    position: absolute; top: -4px; right: -4px;
+    background: #EF4444; color: #fff; border-radius: 50%;
+    width: 18px; height: 18px; font-size: .65rem; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    display: none;
+}
+.pixa-panel {
+    position: fixed; bottom: 5.5rem; right: 1.5rem; z-index: 1000;
+    width: 370px; height: 520px;
+    background: #fff; border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.18);
+    display: flex; flex-direction: column;
+    transform: scale(.92) translateY(16px); opacity: 0;
+    pointer-events: none;
+    transition: transform .22s cubic-bezier(.34,1.56,.64,1), opacity .18s;
+}
+.pixa-panel.open {
+    transform: scale(1) translateY(0); opacity: 1; pointer-events: all;
+}
+.pixa-header {
+    background: linear-gradient(135deg, #2563EB, #7C3AED);
+    border-radius: 16px 16px 0 0; padding: 1rem 1.25rem;
+    display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+}
+.pixa-header-info { display: flex; align-items: center; gap: .75rem; }
+.pixa-avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: rgba(255,255,255,.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; color: #fff;
+}
+.pixa-header h4 { color: #fff; font-size: .95rem; font-weight: 700; margin: 0; }
+.pixa-header p { color: rgba(255,255,255,.75); font-size: .72rem; margin: 0; }
+.pixa-header-btns { display: flex; gap: .5rem; }
+.pixa-header-btns button {
+    background: rgba(255,255,255,.15); border: none; color: #fff;
+    width: 28px; height: 28px; border-radius: 8px; cursor: pointer;
+    font-size: .8rem; display: flex; align-items: center; justify-content: center;
+    transition: background .15s;
+}
+.pixa-header-btns button:hover { background: rgba(255,255,255,.25); }
+.pixa-messages {
+    flex: 1; overflow-y: auto; padding: 1rem; display: flex;
+    flex-direction: column; gap: .75rem;
+    scrollbar-width: thin; scrollbar-color: #E2E8F0 transparent;
+}
+.pixa-msg { display: flex; gap: .5rem; align-items: flex-end; }
+.pixa-msg.user { flex-direction: row-reverse; }
+.pixa-msg-avatar {
+    width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: .7rem; font-weight: 700;
+}
+.pixa-msg.ai .pixa-msg-avatar { background: linear-gradient(135deg,#2563EB,#7C3AED); color: #fff; }
+.pixa-msg.user .pixa-msg-avatar { background: #E2E8F0; color: #64748B; }
+.pixa-bubble {
+    max-width: 78%; padding: .65rem .9rem; border-radius: 14px;
+    font-size: .82rem; line-height: 1.5;
+}
+.pixa-msg.ai .pixa-bubble { background: #F1F5F9; color: #1E293B; border-bottom-left-radius: 4px; }
+.pixa-msg.user .pixa-bubble { background: #2563EB; color: #fff; border-bottom-right-radius: 4px; }
+.pixa-typing { display: flex; align-items: center; gap: 4px; padding: .5rem .9rem; }
+.pixa-typing span {
+    width: 7px; height: 7px; border-radius: 50%; background: #94A3B8;
+    animation: pixaBounce 1.2s infinite;
+}
+.pixa-typing span:nth-child(2) { animation-delay: .2s; }
+.pixa-typing span:nth-child(3) { animation-delay: .4s; }
+@keyframes pixaBounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-6px)} }
+.pixa-suggestions {
+    padding: .5rem 1rem; display: flex; gap: .4rem; flex-wrap: wrap;
+    border-top: 1px solid #F1F5F9;
+}
+.pixa-suggestion {
+    background: #EFF6FF; color: #2563EB; border: 1px solid #BFDBFE;
+    border-radius: 20px; padding: .3rem .75rem; font-size: .72rem;
+    cursor: pointer; transition: background .15s; white-space: nowrap;
+}
+.pixa-suggestion:hover { background: #DBEAFE; }
+.pixa-input-row {
+    padding: .75rem 1rem; border-top: 1px solid #E2E8F0;
+    display: flex; gap: .5rem; align-items: center;
+}
+.pixa-input {
+    flex: 1; border: 1.5px solid #E2E8F0; border-radius: 24px;
+    padding: .5rem 1rem; font-size: .82rem; outline: none;
+    transition: border-color .15s; font-family: inherit;
+    resize: none; height: 38px; overflow: hidden;
+}
+.pixa-input:focus { border-color: #2563EB; }
+.pixa-send {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: #2563EB; border: none; cursor: pointer; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .9rem; transition: background .15s; flex-shrink: 0;
+}
+.pixa-send:hover { background: #1E40AF; }
+.pixa-send:disabled { background: #CBD5E1; cursor: not-allowed; }
+@media (max-width: 600px) {
+    .pixa-panel { width: calc(100vw - 2rem); right: 1rem; left: 1rem; }
+}
+</style>
+
+<!-- Floating button -->
+<button class="pixa-btn" id="pixaBtn" onclick="togglePixa()" title="Ask PIXA AI">
+    <i class="fas fa-robot"></i>
+    <span class="pixa-badge" id="pixaBadge">1</span>
+</button>
+
+<!-- Chat panel -->
+<div class="pixa-panel" id="pixaPanel">
+    <div class="pixa-header">
+        <div class="pixa-header-info">
+            <div class="pixa-avatar"><i class="fas fa-robot"></i></div>
+            <div>
+                <h4>PIXA</h4>
+                <p>AI Business Assistant • Online</p>
+            </div>
+        </div>
+        <div class="pixa-header-btns">
+            <button onclick="clearPixaChat()" title="Clear chat"><i class="fas fa-trash-alt"></i></button>
+            <button onclick="togglePixa()" title="Close"><i class="fas fa-times"></i></button>
+        </div>
+    </div>
+
+    <div class="pixa-messages" id="pixaMessages">
+        <div class="pixa-msg ai">
+            <div class="pixa-msg-avatar"><i class="fas fa-robot"></i></div>
+            <div class="pixa-bubble">
+                👋 Hi! I'm <strong>PIXA</strong>, your AI business assistant for Pixxxel Supermarket.<br><br>
+                I have live access to your store data — sales, inventory, customers, and more. Ask me anything!
+            </div>
+        </div>
+    </div>
+
+    <div class="pixa-suggestions" id="pixaSuggestions">
+        <button class="pixa-suggestion" onclick="pixaAsk(this)">How are sales today?</button>
+        <button class="pixa-suggestion" onclick="pixaAsk(this)">Low stock items?</button>
+        <button class="pixa-suggestion" onclick="pixaAsk(this)">Sales trend this week</button>
+        <button class="pixa-suggestion" onclick="pixaAsk(this)">Top selling products</button>
+    </div>
+
+    <div class="pixa-input-row">
+        <input type="text" class="pixa-input" id="pixaInput"
+               placeholder="Ask about sales, inventory, customers..."
+               onkeydown="if(event.key==='Enter')sendPixaMessage()">
+        <button class="pixa-send" id="pixaSendBtn" onclick="sendPixaMessage()">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
+</div>
+
+<script>
+function getPixaCsrf() {
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.content : '';
+}
+let pixaOpen = false;
+
+function togglePixa() {
+    pixaOpen = !pixaOpen;
+    document.getElementById('pixaPanel').classList.toggle('open', pixaOpen);
+    document.getElementById('pixaBadge').style.display = 'none';
+    if (pixaOpen) document.getElementById('pixaInput').focus();
+}
+
+function pixaAsk(btn) {
+    document.getElementById('pixaInput').value = btn.textContent;
+    sendPixaMessage();
+}
+
+function appendPixaMsg(role, text) {
+    const container = document.getElementById('pixaMessages');
+    const isAI = role === 'ai';
+    const div = document.createElement('div');
+    div.className = 'pixa-msg ' + role;
+    // Convert markdown-ish bold and line breaks
+    const formatted = text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+    div.innerHTML = `
+        <div class="pixa-msg-avatar">${isAI ? '<i class="fas fa-robot"></i>' : '{{ current_user.username[0].upper() }}'}</div>
+        <div class="pixa-bubble">${formatted}</div>`;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+    return div;
+}
+
+function showTyping() {
+    const container = document.getElementById('pixaMessages');
+    const div = document.createElement('div');
+    div.className = 'pixa-msg ai'; div.id = 'pixaTyping';
+    div.innerHTML = `<div class="pixa-msg-avatar"><i class="fas fa-robot"></i></div>
+        <div class="pixa-bubble pixa-typing"><span></span><span></span><span></span></div>`;
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+}
+
+function removeTyping() {
+    const t = document.getElementById('pixaTyping');
+    if (t) t.remove();
+}
+
+async function sendPixaMessage() {
+    const input = document.getElementById('pixaInput');
+    const msg = input.value.trim();
+    if (!msg) return;
+
+    input.value = '';
+    document.getElementById('pixaSuggestions').style.display = 'none';
+    appendPixaMsg('user', msg);
+    showTyping();
+
+    const btn = document.getElementById('pixaSendBtn');
+    btn.disabled = true;
+
+    try {
+        const csrfToken = getPixaCsrf();
+        console.log('[PIXA] Sending message:', msg);
+        console.log('[PIXA] CSRF token:', csrfToken);
+        const resp = await fetch('/ai/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken },
+            body: JSON.stringify({ message: msg })
+        });
+        console.log('[PIXA] Response status:', resp.status);
+        const rawText = await resp.text();
+        console.log('[PIXA] Response body:', rawText);
+        const data = JSON.parse(rawText);
+        removeTyping();
+        appendPixaMsg('ai', data.success ? data.reply : '⚠️ ' + (data.message || 'Something went wrong.'));
+    } catch(e) {
+        removeTyping();
+        console.error('[PIXA] Fetch exception:', e);
+        appendPixaMsg('ai', '⚠️ Network error. Please try again.');
+    }
+    btn.disabled = false;
+    input.focus();
+}
+
+async function clearPixaChat() {
+    await fetch('/ai/clear', { method: 'POST', headers: { 'X-CSRFToken': getPixaCsrf() } });
+    const container = document.getElementById('pixaMessages');
+    container.innerHTML = `<div class="pixa-msg ai">
+        <div class="pixa-msg-avatar"><i class="fas fa-robot"></i></div>
+        <div class="pixa-bubble">Chat cleared! How can I help you? 😊</div>
+    </div>`;
+    document.getElementById('pixaSuggestions').style.display = 'flex';
+}
+
+// Show badge on first load to draw attention
+setTimeout(() => {
+    if (!pixaOpen) document.getElementById('pixaBadge').style.display = 'flex';
+}, 3000);
+</script>
+{% endif %}
 </body>
 </html>

@@ -30,6 +30,7 @@ def create_app():
         return User.query.get(int(user_id))
 
     # Register blueprints
+    from blueprints.ai.routes import ai_bp
     from blueprints.auth.routes import auth_bp
     from blueprints.dashboard.routes import dashboard_bp
     from blueprints.products.routes import products_bp
@@ -40,6 +41,8 @@ def create_app():
     from blueprints.receipts.routes import receipts_bp
     from blueprints.reports.routes import reports_bp
 
+    app.register_blueprint(ai_bp)
+    csrf.exempt(ai_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(products_bp)
