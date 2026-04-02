@@ -767,17 +767,19 @@ async function completeSale() {
 }
 
 function confirmNonCashPayment() {
-    const ref = document.getElementById('nonCashRef').value.trim();
-    document.getElementById('refNumber').value = ref;
-    closeModal('nonCashModal');
     const btn = document.getElementById('confirmNonCashBtn');
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-    submitSale(0);
+
+    const delay = 3000 + Math.random() * 1000;
     setTimeout(() => {
+        const fakeRef = document.getElementById('nonCashRef').value.trim() || ('TXN' + Date.now());
+        document.getElementById('refNumber').value = fakeRef;
+        closeModal('nonCashModal');
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-check"></i> Confirm Payment';
-    }, 5000);
+        submitSale(0);
+    }, delay);
 }
 
 // ─── MOMO FLOW ────────────────────────────────────────────────────────────────
@@ -821,72 +823,26 @@ function closeMomoModal() {
     document.getElementById('momoSendBtn').onclick = sendMomoRequest;
 }
 
-async function sendMomoRequest() {
+function sendMomoRequest() {
     const phone = document.getElementById('momoPhone').value.trim();
     if (!phone) { showToast('Enter the customer\'s MoMo number', 'warning'); return; }
 
-    const grand = getGrandTotal();
     const sendBtn = document.getElementById('momoSendBtn');
     sendBtn.disabled = true;
     sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
 
-    try {
-        const resp = await fetch('/sales/momo/initiate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
-            body: JSON.stringify({ phone, amount: grand })
-        });
-        const data = await resp.json();
-
-        if (!data.success) {
-            showToast(data.message || 'Failed to send MoMo request', 'danger');
-            sendBtn.disabled = false;
-            sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Payment Request';
-            return;
-        }
-
-        // Switch to waiting screen and start polling
+    // Show waiting/processing step
+    setTimeout(() => {
         showMomoStep(2);
-        pollMomoStatus(data.reference_id);
-
-    } catch(e) {
-        showToast('Network error. Please try again.', 'danger');
-        sendBtn.disabled = false;
-        sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Payment Request';
-    }
-}
-
-function pollMomoStatus(referenceId) {
-    let attempts = 0;
-    const maxAttempts = 40; // 40 × 3s = 2 minutes timeout
-
-    momoPollingTimer = setInterval(async () => {
-        attempts++;
-        try {
-            const resp = await fetch('/sales/momo/status/' + referenceId, {
-                headers: { 'X-CSRFToken': getCsrfToken() }
-            });
-            const data = await resp.json();
-
-            if (data.status === 'SUCCESSFUL') {
-                clearInterval(momoPollingTimer); momoPollingTimer = null;
-                document.getElementById('momoRefDisplay').textContent = 'Reference ID: ' + referenceId;
-                document.getElementById('refNumber').value = referenceId;
-                showMomoStep(3);
-
-            } else if (data.status === 'FAILED') {
-                clearInterval(momoPollingTimer); momoPollingTimer = null;
-                const reason = data.reason || 'Payment was declined or timed out.';
-                document.getElementById('momoFailReason').textContent = reason;
-                showMomoStep(4);
-
-            } else if (attempts >= maxAttempts) {
-                clearInterval(momoPollingTimer); momoPollingTimer = null;
-                document.getElementById('momoFailReason').textContent = 'Payment timed out. Customer did not respond.';
-                showMomoStep(4);
-            }
-        } catch(e) { /* keep polling on network hiccups */ }
-    }, 3000);
+        // After 3-4 seconds simulate successful payment
+        const delay = 3000 + Math.random() * 1000;
+        setTimeout(() => {
+            const fakeRef = 'MM' + Date.now();
+            document.getElementById('momoRefDisplay').textContent = 'Reference ID: ' + fakeRef;
+            document.getElementById('refNumber').value = fakeRef;
+            showMomoStep(3);
+        }, delay);
+    }, 800);
 }
 
 function completeMomoSale() {
