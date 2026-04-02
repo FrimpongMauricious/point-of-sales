@@ -11,6 +11,9 @@ class Config:
     SQLALCHEMY_DATABASE_URI = _db_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     WTF_CSRF_ENABLED = True
+    REMEMBER_COOKIE_DURATION = 86400  # 24 hours in seconds
+    REMEMBER_COOKIE_SECURE = False    # set True if enforcing HTTPS only
+    PERMANENT_SESSION_LIFETIME = 86400
 
     # Business Configuration
     STORE_NAME = 'Pixxxel Supermarket'

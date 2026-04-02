@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, login_required, current_user
+from urllib.parse import urlparse
 from models import db, User
 from functools import wraps
 
@@ -31,8 +32,14 @@ def login():
         user = User.query.filter_by(username=username).first()
 
         if user and user.check_password(password) and user.is_active:
-            login_user(user)
+            login_user(user, remember=True)
             flash(f'Welcome back, {user.username}!', 'success')
+            # Honour ?next= (e.g. /sales/pos?scan=BARCODE) — but only allow
+            # relative paths to prevent open-redirect attacks
+            next_url = request.args.get('next') or request.form.get('next', '')
+            parsed = urlparse(next_url)
+            if next_url and not parsed.netloc:  # relative URL only
+                return redirect(next_url)
             return _redirect_by_role(user.role)
         else:
             flash('Invalid username or password.', 'danger')
