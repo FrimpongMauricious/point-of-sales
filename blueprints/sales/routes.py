@@ -182,39 +182,91 @@ def customer_by_phone():
     })
 
 
-@sales_bp.route('/momo/initiate', methods=['POST'])
+@sales_bp.route('/paystack/charge', methods=['POST'])
 @login_required
-def momo_initiate():
-    """Trigger a MoMo USSD push to the customer's phone."""
-    from services.momo import request_to_pay
-    data   = request.get_json() or {}
-    phone  = (data.get('phone') or '').strip()
+def paystack_charge():
+    """Initiate a Paystack charge — mobile money or card."""
+    from services.paystack import initiate_mobile_money, initiate_card
+    data = request.get_json() or {}
+    charge_type = data.get('type')  # 'momo' or 'card'
     amount = float(data.get('amount', 0))
+    email = (data.get('email') or 'customer@pixxxel.com').strip()
 
-    if not phone:
-        return jsonify({'success': False, 'message': 'Phone number is required.'}), 400
     if amount <= 0:
         return jsonify({'success': False, 'message': 'Invalid amount.'}), 400
 
     try:
-        result = request_to_pay(phone, amount, note=f'Pixxxel Supermarket – ₵{amount:.2f}')
-        return jsonify({'success': True, 'reference_id': result['reference_id']})
+        if charge_type == 'momo':
+            phone = (data.get('phone') or '').strip()
+            provider = (data.get('provider') or 'mtn').strip()
+            if not phone:
+                return jsonify({'success': False, 'message': 'Phone number is required.'}), 400
+            result = initiate_mobile_money(phone, amount, provider=provider, email=email)
+        elif charge_type == 'card':
+            card_number = (data.get('card_number') or '').strip()
+            expiry_month = (data.get('expiry_month') or '').strip()
+            expiry_year = (data.get('expiry_year') or '').strip()
+            cvv = (data.get('cvv') or '').strip()
+            if not all([card_number, expiry_month, expiry_year, cvv]):
+                return jsonify({'success': False, 'message': 'All card fields are required.'}), 400
+            result = initiate_card(card_number, expiry_month, expiry_year, cvv, amount, email=email)
+        else:
+            return jsonify({'success': False, 'message': 'Invalid charge type.'}), 400
+
+        return jsonify({'success': True, 'reference': result.get('reference'), 'status': result.get('status'), 'display_text': result.get('display_text', '')})
     except Exception as e:
-        current_app.logger.error(f'MoMo initiate error: {e}')
-        return jsonify({'success': False, 'message': 'Could not reach MoMo service. Try again.'}), 502
+        current_app.logger.error(f'Paystack charge error: {e}')
+        return jsonify({'success': False, 'message': str(e)}), 502
 
 
-@sales_bp.route('/momo/status/<reference_id>')
+@sales_bp.route('/paystack/submit-otp', methods=['POST'])
 @login_required
-def momo_status(reference_id):
-    """Poll the status of a MoMo payment request."""
-    from services.momo import get_payment_status
+def paystack_submit_otp():
+    """Submit OTP to Paystack."""
+    from services.paystack import submit_otp
+    data = request.get_json() or {}
+    otp = (data.get('otp') or '').strip()
+    reference = (data.get('reference') or '').strip()
+    if not otp or not reference:
+        return jsonify({'success': False, 'message': 'OTP and reference are required.'}), 400
     try:
-        result = get_payment_status(reference_id)
-        return jsonify({'success': True, **result})
+        result = submit_otp(otp, reference)
+        return jsonify({'success': True, 'status': result.get('status'), 'reference': reference})
     except Exception as e:
-        current_app.logger.error(f'MoMo status error: {e}')
-        return jsonify({'success': False, 'message': 'Could not check payment status.'}), 502
+        current_app.logger.error(f'Paystack OTP error: {e}')
+        return jsonify({'success': False, 'message': str(e)}), 502
+
+
+@sales_bp.route('/paystack/submit-pin', methods=['POST'])
+@login_required
+def paystack_submit_pin():
+    """Submit card PIN to Paystack."""
+    from services.paystack import submit_pin
+    data = request.get_json() or {}
+    pin = (data.get('pin') or '').strip()
+    reference = (data.get('reference') or '').strip()
+    if not pin or not reference:
+        return jsonify({'success': False, 'message': 'PIN and reference are required.'}), 400
+    try:
+        result = submit_pin(pin, reference)
+        return jsonify({'success': True, 'status': result.get('status'), 'reference': reference})
+    except Exception as e:
+        current_app.logger.error(f'Paystack PIN error: {e}')
+        return jsonify({'success': False, 'message': str(e)}), 502
+
+
+@sales_bp.route('/paystack/verify/<reference>')
+@login_required
+def paystack_verify(reference):
+    """Poll Paystack to verify transaction status."""
+    from services.paystack import verify_transaction
+    try:
+        result = verify_transaction(reference)
+        status = result.get('status')  # 'success', 'failed', 'abandoned', 'pending'
+        return jsonify({'success': True, 'status': status, 'reference': reference})
+    except Exception as e:
+        current_app.logger.error(f'Paystack verify error: {e}')
+        return jsonify({'success': False, 'message': str(e)}), 502
 
 
 @sales_bp.route('/history')

@@ -249,38 +249,50 @@
             <h3><i class="fas fa-mobile-alt"></i> Mobile Money Payment</h3>
         </div>
         <div class="modal-body">
-            <!-- Step 1: Enter phone -->
+            <!-- Step 1: Enter phone + provider -->
             <div id="momoStep1">
-                <p style="margin-bottom:1rem;">
-                    Amount: <strong id="momoAmount" style="font-size:1.3rem;color:var(--primary);"></strong>
-                </p>
+                <p style="margin-bottom:1rem;">Amount: <strong id="momoAmount" style="font-size:1.3rem;color:var(--primary);"></strong></p>
+                <div class="form-group">
+                    <label class="form-label">Network Provider</label>
+                    <select id="momoProvider" class="form-input">
+                        <option value="mtn">MTN Mobile Money</option>
+                        <option value="vod">Vodafone Cash</option>
+                        <option value="tgo">AirtelTigo Money</option>
+                    </select>
+                </div>
                 <div class="form-group">
                     <label class="form-label">Customer MoMo Number</label>
-                    <input type="tel" id="momoPhone" class="form-input"
-                           placeholder="e.g. 0244123456" maxlength="13"
-                           oninput="this.value=this.value.replace(/[^0-9+]/,'')">
-                    <small style="color:var(--text-muted);font-size:.75rem;">MTN Ghana number only</small>
+                    <input type="tel" id="momoPhone" class="form-input" placeholder="e.g. 0244123456" maxlength="13">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Customer Email <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+                    <input type="email" id="momoEmail" class="form-input" placeholder="customer@email.com">
                 </div>
             </div>
-            <!-- Step 2: Waiting for customer to approve -->
-            <div id="momoStep2" style="display:none;text-align:center;padding:1rem 0;">
-                <div style="font-size:2.5rem;margin-bottom:.75rem;">📱</div>
-                <p style="font-weight:600;font-size:1rem;margin-bottom:.5rem;">USSD prompt sent!</p>
-                <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1.25rem;">
-                    Ask the customer to check their phone and enter their MoMo PIN to approve.
-                </p>
-                <div id="momoPollingStatus" style="display:flex;align-items:center;justify-content:center;gap:.5rem;color:var(--text-muted);">
-                    <i class="fas fa-spinner fa-spin"></i> Waiting for confirmation...
-                </div>
+            <!-- Step 2: OTP sent — cashier enters it -->
+            <div id="momoStep2" style="display:none;text-align:center;padding:.5rem 0;">
+                <div style="font-size:2.5rem;margin-bottom:.75rem;">📲</div>
+                <p style="font-weight:600;font-size:1rem;margin-bottom:.5rem;">OTP sent to customer's phone!</p>
+                <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:1.25rem;">Ask the customer for the OTP they received and enter it below.</p>
+                <input type="text" id="momoOtp" class="form-input" placeholder="Enter OTP here" maxlength="8" style="text-align:center;font-size:1.4rem;letter-spacing:.3rem;font-weight:700;">
             </div>
-            <!-- Step 3: Success -->
+            <!-- Step 3: USSD sent — waiting for PIN -->
             <div id="momoStep3" style="display:none;text-align:center;padding:1rem 0;">
+                <div style="font-size:2.5rem;margin-bottom:.75rem;">📱</div>
+                <p style="font-weight:600;font-size:1rem;margin-bottom:.5rem;">USSD prompt sent to customer!</p>
+                <p style="color:var(--text-muted);font-size:.9rem;margin-bottom:1rem;">Ask the customer to enter their MoMo PIN on their phone.</p>
+                <div style="display:flex;align-items:center;justify-content:center;gap:.5rem;color:var(--text-muted);">
+                    <i class="fas fa-spinner fa-spin"></i> Waiting for PIN confirmation...
+                </div>
+            </div>
+            <!-- Step 4: Success -->
+            <div id="momoStep4" style="display:none;text-align:center;padding:1rem 0;">
                 <div style="font-size:2.5rem;margin-bottom:.75rem;">✅</div>
                 <p style="font-weight:700;font-size:1.1rem;color:#10B981;">Payment Confirmed!</p>
                 <p style="color:var(--text-muted);font-size:.85rem;margin-top:.4rem;" id="momoRefDisplay"></p>
             </div>
-            <!-- Step 4: Failed -->
-            <div id="momoStep4" style="display:none;text-align:center;padding:1rem 0;">
+            <!-- Step 5: Failed -->
+            <div id="momoStep5" style="display:none;text-align:center;padding:1rem 0;">
                 <div style="font-size:2.5rem;margin-bottom:.75rem;">❌</div>
                 <p style="font-weight:700;font-size:1.1rem;color:#DC2626;">Payment Failed</p>
                 <p style="color:var(--text-muted);font-size:.85rem;margin-top:.4rem;" id="momoFailReason"></p>
@@ -288,32 +300,84 @@
         </div>
         <div class="modal-footer" id="momoFooter">
             <button class="btn btn-outline" id="momoCancelBtn" onclick="closeMomoModal()">Cancel</button>
-            <button class="btn btn-primary btn-lg" id="momoSendBtn" onclick="sendMomoRequest()">
-                <i class="fas fa-paper-plane"></i> Send Payment Request
+            <button class="btn btn-primary btn-lg" id="momoActionBtn" onclick="startMomoPayment()">
+                <i class="fas fa-paper-plane"></i> Send OTP Request
             </button>
         </div>
     </div>
 </div>
 
-<!-- Card / Other Non-Cash Modal -->
-<div class="modal-overlay" id="nonCashModal">
+<!-- Card Payment Modal -->
+<div class="modal-overlay" id="cardModal">
     <div class="modal">
         <div class="modal-header">
-            <h3 id="nonCashModalTitle"><i class="fas fa-credit-card"></i> Confirm Payment</h3>
+            <h3><i class="fas fa-credit-card"></i> Card Payment</h3>
         </div>
         <div class="modal-body">
-            <p style="margin-bottom:1rem;">
-                Amount: <strong id="nonCashAmount" style="font-size:1.3rem;color:var(--primary);"></strong>
-            </p>
-            <div class="form-group">
-                <label class="form-label">Reference ID <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
-                <input type="text" id="nonCashRef" class="form-input" placeholder="e.g. Card transaction ID">
+            <!-- Step 1: Card details -->
+            <div id="cardStep1">
+                <p style="margin-bottom:1rem;">Amount: <strong id="cardAmount" style="font-size:1.3rem;color:var(--primary);"></strong></p>
+                <div class="form-group">
+                    <label class="form-label">Card Number</label>
+                    <input type="text" id="cardNumber" class="form-input" placeholder="0000 0000 0000 0000" maxlength="19"
+                           oninput="this.value=this.value.replace(/[^0-9]/g,'').replace(/(.{4})/g,'$1 ').trim()">
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;">
+                    <div class="form-group">
+                        <label class="form-label">Month</label>
+                        <input type="text" id="cardMonth" class="form-input" placeholder="MM" maxlength="2">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Year</label>
+                        <input type="text" id="cardYear" class="form-input" placeholder="YY" maxlength="2">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">CVV</label>
+                        <input type="password" id="cardCvv" class="form-input" placeholder="***" maxlength="4">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Customer Email <span style="font-weight:400;color:var(--text-muted);">(optional)</span></label>
+                    <input type="email" id="cardEmail" class="form-input" placeholder="customer@email.com">
+                </div>
+            </div>
+            <!-- Step 2: OTP -->
+            <div id="cardStep2" style="display:none;text-align:center;padding:.5rem 0;">
+                <div style="font-size:2.5rem;margin-bottom:.75rem;">🔐</div>
+                <p style="font-weight:600;font-size:1rem;margin-bottom:.5rem;">OTP sent to cardholder's phone!</p>
+                <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:1.25rem;">Ask the customer for the OTP sent by their bank.</p>
+                <input type="text" id="cardOtp" class="form-input" placeholder="Enter OTP here" maxlength="8" style="text-align:center;font-size:1.4rem;letter-spacing:.3rem;font-weight:700;">
+            </div>
+            <!-- Step 3: PIN required -->
+            <div id="cardStep3" style="display:none;text-align:center;padding:.5rem 0;">
+                <div style="font-size:2.5rem;margin-bottom:.75rem;">🔑</div>
+                <p style="font-weight:600;font-size:1rem;margin-bottom:.5rem;">Card PIN required</p>
+                <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:1.25rem;">Ask the customer to enter their card PIN.</p>
+                <input type="password" id="cardPin" class="form-input" placeholder="Card PIN" maxlength="6" style="text-align:center;font-size:1.4rem;letter-spacing:.3rem;font-weight:700;">
+            </div>
+            <!-- Step 4: Processing -->
+            <div id="cardStep4" style="display:none;text-align:center;padding:1rem 0;">
+                <div style="font-size:2.5rem;margin-bottom:.75rem;"><i class="fas fa-spinner fa-spin" style="color:var(--primary);"></i></div>
+                <p style="font-weight:600;">Processing payment...</p>
+                <p style="color:var(--text-muted);font-size:.85rem;">Please wait.</p>
+            </div>
+            <!-- Step 5: Success -->
+            <div id="cardStep5" style="display:none;text-align:center;padding:1rem 0;">
+                <div style="font-size:2.5rem;margin-bottom:.75rem;">✅</div>
+                <p style="font-weight:700;font-size:1.1rem;color:#10B981;">Payment Confirmed!</p>
+                <p style="color:var(--text-muted);font-size:.85rem;margin-top:.4rem;" id="cardRefDisplay"></p>
+            </div>
+            <!-- Step 6: Failed -->
+            <div id="cardStep6" style="display:none;text-align:center;padding:1rem 0;">
+                <div style="font-size:2.5rem;margin-bottom:.75rem;">❌</div>
+                <p style="font-weight:700;font-size:1.1rem;color:#DC2626;">Payment Failed</p>
+                <p style="color:var(--text-muted);font-size:.85rem;margin-top:.4rem;" id="cardFailReason"></p>
             </div>
         </div>
-        <div class="modal-footer">
-            <button class="btn btn-outline" onclick="closeModal('nonCashModal')">Cancel</button>
-            <button class="btn btn-primary btn-lg" id="confirmNonCashBtn" onclick="confirmNonCashPayment()">
-                <i class="fas fa-check"></i> Confirm Payment
+        <div class="modal-footer" id="cardFooter">
+            <button class="btn btn-outline" id="cardCancelBtn" onclick="closeCardModal()">Cancel</button>
+            <button class="btn btn-primary btn-lg" id="cardActionBtn" onclick="startCardPayment()">
+                <i class="fas fa-lock"></i> Charge Card
             </button>
         </div>
     </div>
@@ -751,102 +815,326 @@ async function completeSale() {
         document.getElementById('confirmCashBtn').disabled = true;
         openModal('cashModal');
     } else if (method === 'mobile_money') {
-        // Open MoMo modal
         document.getElementById('momoAmount').textContent = CURRENCY + grand.toFixed(2);
         document.getElementById('momoPhone').value = '';
+        document.getElementById('momoEmail').value = '';
+        document.getElementById('momoOtp').value = '';
         showMomoStep(1);
         openModal('momoModal');
     } else {
         // Card
-        document.getElementById('nonCashModalTitle').innerHTML =
-            `<i class="fas fa-credit-card"></i> Confirm Card Payment`;
-        document.getElementById('nonCashAmount').textContent = CURRENCY + grand.toFixed(2);
-        document.getElementById('nonCashRef').value = '';
-        openModal('nonCashModal');
+        document.getElementById('cardAmount').textContent = CURRENCY + grand.toFixed(2);
+        document.getElementById('cardNumber').value = '';
+        document.getElementById('cardMonth').value = '';
+        document.getElementById('cardYear').value = '';
+        document.getElementById('cardCvv').value = '';
+        document.getElementById('cardEmail').value = '';
+        document.getElementById('cardOtp').value = '';
+        document.getElementById('cardPin').value = '';
+        showCardStep(1);
+        openModal('cardModal');
     }
 }
 
-function confirmNonCashPayment() {
-    const btn = document.getElementById('confirmNonCashBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-
-    const delay = 3000 + Math.random() * 1000;
-    setTimeout(() => {
-        const fakeRef = document.getElementById('nonCashRef').value.trim() || ('TXN' + Date.now());
-        document.getElementById('refNumber').value = fakeRef;
-        closeModal('nonCashModal');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-check"></i> Confirm Payment';
-        submitSale(0);
-    }, delay);
-}
-
-// ─── MOMO FLOW ────────────────────────────────────────────────────────────────
+// ─── MOMO FLOW (Paystack) ─────────────────────────────────────────────────────
+let momoRef = null;
 let momoPollingTimer = null;
 
 function showMomoStep(step) {
-    [1,2,3,4].forEach(n => {
+    [1,2,3,4,5].forEach(n => {
         document.getElementById('momoStep' + n).style.display = (n === step) ? '' : 'none';
     });
-    const footer = document.getElementById('momoFooter');
-    const sendBtn = document.getElementById('momoSendBtn');
+    const actionBtn = document.getElementById('momoActionBtn');
     const cancelBtn = document.getElementById('momoCancelBtn');
+    actionBtn.disabled = false;
+    cancelBtn.style.display = '';
     if (step === 1) {
-        sendBtn.style.display = '';
-        sendBtn.disabled = false;
-        sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send Payment Request';
+        actionBtn.style.display = '';
+        actionBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send OTP Request';
+        actionBtn.onclick = startMomoPayment;
         cancelBtn.textContent = 'Cancel';
     } else if (step === 2) {
-        sendBtn.style.display = 'none';
+        actionBtn.style.display = '';
+        actionBtn.innerHTML = '<i class="fas fa-check"></i> Submit OTP';
+        actionBtn.onclick = submitMomoOtp;
         cancelBtn.textContent = 'Cancel';
     } else if (step === 3) {
-        sendBtn.style.display = '';
-        sendBtn.disabled = false;
-        sendBtn.innerHTML = '<i class="fas fa-check"></i> Complete Sale';
-        sendBtn.onclick = completeMomoSale;
-        cancelBtn.style.display = 'none';
-    } else if (step === 4) {
-        sendBtn.style.display = '';
-        sendBtn.disabled = false;
-        sendBtn.innerHTML = '<i class="fas fa-redo"></i> Try Again';
-        sendBtn.onclick = () => { showMomoStep(1); sendBtn.onclick = sendMomoRequest; };
+        actionBtn.style.display = 'none';
         cancelBtn.textContent = 'Cancel';
-        cancelBtn.style.display = '';
+    } else if (step === 4) {
+        actionBtn.style.display = '';
+        actionBtn.innerHTML = '<i class="fas fa-check"></i> Complete Sale';
+        actionBtn.onclick = completeMomoSale;
+        cancelBtn.style.display = 'none';
+    } else if (step === 5) {
+        actionBtn.style.display = '';
+        actionBtn.innerHTML = '<i class="fas fa-redo"></i> Try Again';
+        actionBtn.onclick = () => showMomoStep(1);
+        cancelBtn.textContent = 'Cancel';
     }
 }
 
 function closeMomoModal() {
     if (momoPollingTimer) { clearInterval(momoPollingTimer); momoPollingTimer = null; }
     closeModal('momoModal');
-    // Reset send button onclick
-    document.getElementById('momoSendBtn').onclick = sendMomoRequest;
+    momoRef = null;
 }
 
-function sendMomoRequest() {
+async function startMomoPayment() {
     const phone = document.getElementById('momoPhone').value.trim();
     if (!phone) { showToast('Enter the customer\'s MoMo number', 'warning'); return; }
-
-    const sendBtn = document.getElementById('momoSendBtn');
-    sendBtn.disabled = true;
-    sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-
-    // Show waiting/processing step
-    setTimeout(() => {
+    const provider = document.getElementById('momoProvider').value;
+    const email = document.getElementById('momoEmail').value.trim() || 'customer@pixxxel.com';
+    const amount = getGrandTotal();
+    const btn = document.getElementById('momoActionBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    try {
+        const resp = await fetch('/sales/paystack/charge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+            body: JSON.stringify({ type: 'momo', phone, provider, email, amount })
+        });
+        const data = await resp.json();
+        if (!data.success) { showToast(data.message || 'Failed to initiate payment', 'danger'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send OTP Request'; return; }
+        momoRef = data.reference;
         showMomoStep(2);
-        // After 3-4 seconds simulate successful payment
-        const delay = 3000 + Math.random() * 1000;
-        setTimeout(() => {
-            const fakeRef = 'MM' + Date.now();
-            document.getElementById('momoRefDisplay').textContent = 'Reference ID: ' + fakeRef;
-            document.getElementById('refNumber').value = fakeRef;
+    } catch(e) {
+        showToast('Network error. Try again.', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Send OTP Request';
+    }
+}
+
+async function submitMomoOtp() {
+    const otp = document.getElementById('momoOtp').value.trim();
+    if (!otp) { showToast('Enter the OTP from the customer', 'warning'); return; }
+    const btn = document.getElementById('momoActionBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+    try {
+        const resp = await fetch('/sales/paystack/submit-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+            body: JSON.stringify({ otp, reference: momoRef })
+        });
+        const data = await resp.json();
+        if (!data.success) { showToast(data.message || 'Invalid OTP', 'danger'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Submit OTP'; return; }
+        // status: 'pay_offline' = USSD sent, 'success' = immediate
+        if (data.status === 'success') {
+            document.getElementById('momoRefDisplay').textContent = 'Reference: ' + momoRef;
+            document.getElementById('refNumber').value = momoRef;
+            showMomoStep(4);
+        } else {
             showMomoStep(3);
-        }, delay);
-    }, 800);
+            pollMomoStatus();
+        }
+    } catch(e) {
+        showToast('Network error. Try again.', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check"></i> Submit OTP';
+    }
+}
+
+function pollMomoStatus() {
+    let attempts = 0;
+    momoPollingTimer = setInterval(async () => {
+        attempts++;
+        if (attempts > 40) {
+            clearInterval(momoPollingTimer);
+            document.getElementById('momoFailReason').textContent = 'Payment timed out. Please try again.';
+            showMomoStep(5);
+            return;
+        }
+        try {
+            const resp = await fetch('/sales/paystack/verify/' + momoRef, { headers: { 'X-CSRFToken': getCsrfToken() } });
+            const data = await resp.json();
+            if (!data.success) return;
+            if (data.status === 'success') {
+                clearInterval(momoPollingTimer);
+                document.getElementById('momoRefDisplay').textContent = 'Reference: ' + momoRef;
+                document.getElementById('refNumber').value = momoRef;
+                showMomoStep(4);
+            } else if (data.status === 'failed' || data.status === 'abandoned') {
+                clearInterval(momoPollingTimer);
+                document.getElementById('momoFailReason').textContent = 'Payment was ' + data.status + '. Please try again.';
+                showMomoStep(5);
+            }
+        } catch(e) { /* retry */ }
+    }, 4000);
 }
 
 function completeMomoSale() {
-    closeModal('momoModal');
+    closeMomoModal();
+    submitSale(getGrandTotal());
+}
+
+// ─── CARD FLOW (Paystack) ─────────────────────────────────────────────────────
+let cardRef = null;
+
+function showCardStep(step) {
+    [1,2,3,4,5,6].forEach(n => {
+        document.getElementById('cardStep' + n).style.display = (n === step) ? '' : 'none';
+    });
+    const actionBtn = document.getElementById('cardActionBtn');
+    const cancelBtn = document.getElementById('cardCancelBtn');
+    actionBtn.disabled = false;
+    cancelBtn.style.display = '';
+    if (step === 1) {
+        actionBtn.style.display = '';
+        actionBtn.innerHTML = '<i class="fas fa-lock"></i> Charge Card';
+        actionBtn.onclick = startCardPayment;
+        cancelBtn.textContent = 'Cancel';
+    } else if (step === 2) {
+        actionBtn.style.display = '';
+        actionBtn.innerHTML = '<i class="fas fa-check"></i> Submit OTP';
+        actionBtn.onclick = submitCardOtp;
+    } else if (step === 3) {
+        actionBtn.style.display = '';
+        actionBtn.innerHTML = '<i class="fas fa-check"></i> Submit PIN';
+        actionBtn.onclick = submitCardPin;
+    } else if (step === 4) {
+        actionBtn.style.display = 'none';
+        cancelBtn.style.display = 'none';
+    } else if (step === 5) {
+        actionBtn.style.display = '';
+        actionBtn.innerHTML = '<i class="fas fa-check"></i> Complete Sale';
+        actionBtn.onclick = completeCardSale;
+        cancelBtn.style.display = 'none';
+    } else if (step === 6) {
+        actionBtn.style.display = '';
+        actionBtn.innerHTML = '<i class="fas fa-redo"></i> Try Again';
+        actionBtn.onclick = () => showCardStep(1);
+        cancelBtn.textContent = 'Cancel';
+    }
+}
+
+function closeCardModal() {
+    closeModal('cardModal');
+    cardRef = null;
+}
+
+async function startCardPayment() {
+    const card_number = document.getElementById('cardNumber').value.replace(/\s/g,'').trim();
+    const expiry_month = document.getElementById('cardMonth').value.trim();
+    const expiry_year = document.getElementById('cardYear').value.trim();
+    const cvv = document.getElementById('cardCvv').value.trim();
+    if (!card_number || !expiry_month || !expiry_year || !cvv) { showToast('Fill in all card details', 'warning'); return; }
+    const email = document.getElementById('cardEmail').value.trim() || 'customer@pixxxel.com';
+    const amount = getGrandTotal();
+    const btn = document.getElementById('cardActionBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    try {
+        const resp = await fetch('/sales/paystack/charge', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+            body: JSON.stringify({ type: 'card', card_number, expiry_month, expiry_year, cvv, email, amount })
+        });
+        const data = await resp.json();
+        if (!data.success) { showToast(data.message || 'Card charge failed', 'danger'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-lock"></i> Charge Card'; return; }
+        cardRef = data.reference;
+        if (data.status === 'send_otp') {
+            showCardStep(2);
+        } else if (data.status === 'send_pin') {
+            showCardStep(3);
+        } else if (data.status === 'success') {
+            document.getElementById('cardRefDisplay').textContent = 'Reference: ' + cardRef;
+            document.getElementById('refNumber').value = cardRef;
+            showCardStep(5);
+        } else {
+            showCardStep(4);
+            pollCardStatus();
+        }
+    } catch(e) {
+        showToast('Network error. Try again.', 'danger');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-lock"></i> Charge Card';
+    }
+}
+
+async function submitCardOtp() {
+    const otp = document.getElementById('cardOtp').value.trim();
+    if (!otp) { showToast('Enter the OTP', 'warning'); return; }
+    const btn = document.getElementById('cardActionBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+    try {
+        const resp = await fetch('/sales/paystack/submit-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+            body: JSON.stringify({ otp, reference: cardRef })
+        });
+        const data = await resp.json();
+        if (!data.success) { showToast(data.message || 'Invalid OTP', 'danger'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Submit OTP'; return; }
+        if (data.status === 'success') {
+            document.getElementById('cardRefDisplay').textContent = 'Reference: ' + cardRef;
+            document.getElementById('refNumber').value = cardRef;
+            showCardStep(5);
+        } else {
+            showCardStep(4);
+            pollCardStatus();
+        }
+    } catch(e) { showToast('Network error.', 'danger'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Submit OTP'; }
+}
+
+async function submitCardPin() {
+    const pin = document.getElementById('cardPin').value.trim();
+    if (!pin) { showToast('Enter the card PIN', 'warning'); return; }
+    const btn = document.getElementById('cardActionBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+    try {
+        const resp = await fetch('/sales/paystack/submit-pin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+            body: JSON.stringify({ pin, reference: cardRef })
+        });
+        const data = await resp.json();
+        if (!data.success) { showToast(data.message || 'Invalid PIN', 'danger'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Submit PIN'; return; }
+        if (data.status === 'success') {
+            document.getElementById('cardRefDisplay').textContent = 'Reference: ' + cardRef;
+            document.getElementById('refNumber').value = cardRef;
+            showCardStep(5);
+        } else if (data.status === 'send_otp') {
+            showCardStep(2);
+        } else {
+            showCardStep(4);
+            pollCardStatus();
+        }
+    } catch(e) { showToast('Network error.', 'danger'); btn.disabled = false; btn.innerHTML = '<i class="fas fa-check"></i> Submit PIN'; }
+}
+
+function pollCardStatus() {
+    let attempts = 0;
+    const timer = setInterval(async () => {
+        attempts++;
+        if (attempts > 30) {
+            clearInterval(timer);
+            document.getElementById('cardFailReason').textContent = 'Payment timed out.';
+            showCardStep(6);
+            return;
+        }
+        try {
+            const resp = await fetch('/sales/paystack/verify/' + cardRef, { headers: { 'X-CSRFToken': getCsrfToken() } });
+            const data = await resp.json();
+            if (!data.success) return;
+            if (data.status === 'success') {
+                clearInterval(timer);
+                document.getElementById('cardRefDisplay').textContent = 'Reference: ' + cardRef;
+                document.getElementById('refNumber').value = cardRef;
+                showCardStep(5);
+            } else if (data.status === 'failed' || data.status === 'abandoned') {
+                clearInterval(timer);
+                document.getElementById('cardFailReason').textContent = 'Payment ' + data.status + '. Try again.';
+                showCardStep(6);
+            }
+        } catch(e) { /* retry */ }
+    }, 4000);
+}
+
+function completeCardSale() {
+    closeCardModal();
     submitSale(getGrandTotal());
 }
 

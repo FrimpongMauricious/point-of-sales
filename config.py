@@ -25,6 +25,8 @@ class Config:
 
     APP_URL = os.environ.get('APP_URL', '').rstrip('/')
     OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+    PAYSTACK_SECRET_KEY = os.environ.get('PAYSTACK_SECRET_KEY', '')
+    PAYSTACK_PUBLIC_KEY = os.environ.get('PAYSTACK_PUBLIC_KEY', '')
 
     # MTN MoMo API
     MOMO_SUBSCRIPTION_KEY = os.environ.get('MOMO_SUBSCRIPTION_KEY', '')
