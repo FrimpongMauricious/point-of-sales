@@ -18,16 +18,13 @@ def initialize_transaction(amount_ghs, email='customer@pixxxel.com', channels=No
     """
     payload = {
         'email': email,
-        'amount': int(round(amount_ghs * 100)),  # pesewas (or kobo if NGN account)
+        'amount': int(round(amount_ghs * 100)),  # pesewas
+        'currency': 'GHS',
     }
-    # channels filter removed — let Paystack show all available channels for this account
-    # if channels:
-    #     payload['channels'] = channels
+    if channels:
+        payload['channels'] = channels
 
-    key = current_app.config.get('PAYSTACK_SECRET_KEY', '')
-    current_app.logger.error(f'[Paystack Init] Using key: {key[:12]}...{key[-4:]} | Payload: {payload}')
     resp = requests.post(f'{PAYSTACK_BASE}/transaction/initialize', json=payload, headers=_headers(), timeout=30)
-    current_app.logger.error(f'[Paystack Init] Status: {resp.status_code} | Body: {resp.text}')
     resp.raise_for_status()
     data = resp.json()
     if not data.get('status'):
