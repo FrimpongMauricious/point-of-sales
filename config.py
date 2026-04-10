@@ -27,6 +27,8 @@ class Config:
     OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
     PAYSTACK_SECRET_KEY = os.environ.get('PAYSTACK_SECRET_KEY', '')
     PAYSTACK_PUBLIC_KEY = os.environ.get('PAYSTACK_PUBLIC_KEY', '')
+    ARKESEL_API_KEY = os.environ.get('ARKESEL_API_KEY', '')
+    ARKESEL_SENDER_ID = os.environ.get('ARKESEL_SENDER_ID', 'Pixxxel')
 
     # MTN MoMo API
     MOMO_SUBSCRIPTION_KEY = os.environ.get('MOMO_SUBSCRIPTION_KEY', '')

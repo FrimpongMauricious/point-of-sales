@@ -148,12 +148,65 @@ def checkout():
 
     db.session.commit()
 
+    # Send SMS receipt if we have a phone number
+    sms_sent = False
+    receipt_phone = None
+    if walk_in_phone:
+        receipt_phone = walk_in_phone
+    elif customer_id:
+        linked = Customer.query.get(int(customer_id))
+        if linked and linked.phone:
+            receipt_phone = linked.phone
+
+
+    if receipt_phone:
+        try:
+            from services.sms import send_sale_receipt
+            store_name = current_app.config.get('STORE_NAME', 'Pixxxel Supermarket')
+            loyalty_rate = current_app.config['LOYALTY_POINTS_RATE']
+
+            # Resolve customer name for personalised greeting
+            cust_name = None
+            if customer_id:
+                cust = Customer.query.get(int(customer_id))
+                if cust:
+                    cust_name = cust.name.split()[0]  # first name only
+
+            # Points earned on this sale
+            pts_earned = int(total_amount // loyalty_rate) if customer_id else 0
+
+            sms_items = [
+                {
+                    'product_name': vi['product'].product_name,
+                    'quantity': vi['quantity'],
+                    'unit_price': vi['unit_price'],
+                    'subtotal': vi['subtotal'],
+                }
+                for vi in validated_items
+            ]
+
+            sms_sent = send_sale_receipt(
+                phone=receipt_phone,
+                sale_id=sale.id,
+                total=total_amount,
+                payment_method=payment_method,
+                items=sms_items,
+                discount=discount,
+                loyalty_points=pts_earned,
+                customer_name=cust_name,
+                change_due=change_due,
+                store_name=store_name
+            )
+        except Exception as e:
+            current_app.logger.error(f'SMS receipt error: {e}')
+
     return jsonify({
         'success': True,
         'sale_id': sale.id,
         'change_due': change_due,
         'auto_created_customer': auto_created_customer,
-        'new_customer_name': new_customer_name
+        'new_customer_name': new_customer_name,
+        'sms_sent': sms_sent
     })
 
 
@@ -180,6 +233,24 @@ def customer_by_phone():
         'visit_count': visit_count,
         'visits_until_member': max(0, 2 - visit_count)
     })
+
+
+@sales_bp.route('/sms/test', methods=['POST'])
+@login_required
+def sms_test():
+    """Test SMS sending — POST {phone, message}"""
+    data = request.get_json() or {}
+    phone = (data.get('phone') or '').strip()
+    message = (data.get('message') or 'Test SMS from Pixxxel POS. If you receive this, SMS is working!').strip()
+    if not phone:
+        return jsonify({'success': False, 'message': 'Phone number required.'}), 400
+    try:
+        from services.sms import send_sms
+        sent = send_sms(phone, message)
+        return jsonify({'success': sent, 'message': 'Sent!' if sent else 'Failed — check server logs.'})
+    except Exception as e:
+        current_app.logger.error(f'SMS test error: {e}')
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 @sales_bp.route('/paystack/initialize', methods=['POST'])
