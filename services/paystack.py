@@ -11,73 +11,28 @@ def _headers():
     }
 
 
-def initiate_mobile_money(phone, amount_ghs, provider='mtn', email='customer@pixxxel.com'):
+def initialize_transaction(amount_ghs, email='customer@pixxxel.com', channels=None):
     """
-    Initiate a Ghana mobile money charge via Paystack.
-    provider: 'mtn' | 'vod' (Vodafone) | 'tgo' (AirtelTigo)
-    Returns Paystack data dict with 'reference' and 'status'.
-    """
-    payload = {
-        'email': email,
-        'amount': int(round(amount_ghs * 100)),  # pesewas
-        'currency': 'GHS',
-        'mobile_money': {
-            'phone': phone,
-            'provider': provider
-        }
-    }
-    resp = requests.post(f'{PAYSTACK_BASE}/charge', json=payload, headers=_headers(), timeout=30)
-    resp.raise_for_status()
-    data = resp.json()
-    if not data.get('status'):
-        raise Exception(data.get('message', 'Paystack error'))
-    return data['data']
-
-
-def initiate_card(card_number, expiry_month, expiry_year, cvv, amount_ghs, email='customer@pixxxel.com'):
-    """
-    Initiate a card charge via Paystack direct charge API.
-    Returns Paystack data dict — status may be 'send_otp', 'send_pin', or 'success'.
+    Initialize a Paystack transaction — returns access_code and reference.
+    channels: e.g. ['mobile_money'] or ['card'] or None for all channels.
     """
     payload = {
         'email': email,
-        'amount': int(round(amount_ghs * 100)),  # pesewas
-        'currency': 'GHS',
-        'card': {
-            'number': card_number.replace(' ', ''),
-            'cvv': cvv,
-            'expiry_month': str(expiry_month).zfill(2),
-            'expiry_year': str(expiry_year)
-        }
+        'amount': int(round(amount_ghs * 100)),  # pesewas (or kobo if NGN account)
     }
-    resp = requests.post(f'{PAYSTACK_BASE}/charge', json=payload, headers=_headers(), timeout=30)
+    # channels filter removed — let Paystack show all available channels for this account
+    # if channels:
+    #     payload['channels'] = channels
+
+    key = current_app.config.get('PAYSTACK_SECRET_KEY', '')
+    current_app.logger.error(f'[Paystack Init] Using key: {key[:12]}...{key[-4:]} | Payload: {payload}')
+    resp = requests.post(f'{PAYSTACK_BASE}/transaction/initialize', json=payload, headers=_headers(), timeout=30)
+    current_app.logger.error(f'[Paystack Init] Status: {resp.status_code} | Body: {resp.text}')
     resp.raise_for_status()
     data = resp.json()
     if not data.get('status'):
         raise Exception(data.get('message', 'Paystack error'))
-    return data['data']
-
-
-def submit_otp(otp, reference):
-    """Submit OTP for mobile money or card charge."""
-    payload = {'otp': str(otp).strip(), 'reference': reference}
-    resp = requests.post(f'{PAYSTACK_BASE}/charge/submit_otp', json=payload, headers=_headers(), timeout=30)
-    resp.raise_for_status()
-    data = resp.json()
-    if not data.get('status'):
-        raise Exception(data.get('message', 'Paystack error'))
-    return data['data']
-
-
-def submit_pin(pin, reference):
-    """Submit card PIN when Paystack requests it."""
-    payload = {'pin': str(pin).strip(), 'reference': reference}
-    resp = requests.post(f'{PAYSTACK_BASE}/charge/submit_pin', json=payload, headers=_headers(), timeout=30)
-    resp.raise_for_status()
-    data = resp.json()
-    if not data.get('status'):
-        raise Exception(data.get('message', 'Paystack error'))
-    return data['data']
+    return data['data']  # contains access_code, reference, authorization_url
 
 
 def verify_transaction(reference):

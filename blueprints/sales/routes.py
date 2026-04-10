@@ -182,88 +182,34 @@ def customer_by_phone():
     })
 
 
-@sales_bp.route('/paystack/charge', methods=['POST'])
+@sales_bp.route('/paystack/initialize', methods=['POST'])
 @login_required
-def paystack_charge():
-    """Initiate a Paystack charge — mobile money or card."""
-    from services.paystack import initiate_mobile_money, initiate_card
+def paystack_initialize():
+    """Initialize a Paystack transaction and return access_code for Popup JS."""
+    from services.paystack import initialize_transaction
     data = request.get_json() or {}
-    charge_type = data.get('type')  # 'momo' or 'card'
     amount = float(data.get('amount', 0))
     email = (data.get('email') or 'customer@pixxxel.com').strip()
+    channels = data.get('channels')  # e.g. ['mobile_money'] or ['card'] or None
 
     if amount <= 0:
         return jsonify({'success': False, 'message': 'Invalid amount.'}), 400
-
     try:
-        if charge_type == 'momo':
-            phone = (data.get('phone') or '').strip()
-            provider = (data.get('provider') or 'mtn').strip()
-            if not phone:
-                return jsonify({'success': False, 'message': 'Phone number is required.'}), 400
-            result = initiate_mobile_money(phone, amount, provider=provider, email=email)
-        elif charge_type == 'card':
-            card_number = (data.get('card_number') or '').strip()
-            expiry_month = (data.get('expiry_month') or '').strip()
-            expiry_year = (data.get('expiry_year') or '').strip()
-            cvv = (data.get('cvv') or '').strip()
-            if not all([card_number, expiry_month, expiry_year, cvv]):
-                return jsonify({'success': False, 'message': 'All card fields are required.'}), 400
-            result = initiate_card(card_number, expiry_month, expiry_year, cvv, amount, email=email)
-        else:
-            return jsonify({'success': False, 'message': 'Invalid charge type.'}), 400
-
-        return jsonify({'success': True, 'reference': result.get('reference'), 'status': result.get('status'), 'display_text': result.get('display_text', '')})
+        result = initialize_transaction(amount, email=email, channels=channels)
+        return jsonify({'success': True, 'access_code': result['access_code'], 'reference': result['reference']})
     except Exception as e:
-        current_app.logger.error(f'Paystack charge error: {e}')
-        return jsonify({'success': False, 'message': str(e)}), 502
-
-
-@sales_bp.route('/paystack/submit-otp', methods=['POST'])
-@login_required
-def paystack_submit_otp():
-    """Submit OTP to Paystack."""
-    from services.paystack import submit_otp
-    data = request.get_json() or {}
-    otp = (data.get('otp') or '').strip()
-    reference = (data.get('reference') or '').strip()
-    if not otp or not reference:
-        return jsonify({'success': False, 'message': 'OTP and reference are required.'}), 400
-    try:
-        result = submit_otp(otp, reference)
-        return jsonify({'success': True, 'status': result.get('status'), 'reference': reference})
-    except Exception as e:
-        current_app.logger.error(f'Paystack OTP error: {e}')
-        return jsonify({'success': False, 'message': str(e)}), 502
-
-
-@sales_bp.route('/paystack/submit-pin', methods=['POST'])
-@login_required
-def paystack_submit_pin():
-    """Submit card PIN to Paystack."""
-    from services.paystack import submit_pin
-    data = request.get_json() or {}
-    pin = (data.get('pin') or '').strip()
-    reference = (data.get('reference') or '').strip()
-    if not pin or not reference:
-        return jsonify({'success': False, 'message': 'PIN and reference are required.'}), 400
-    try:
-        result = submit_pin(pin, reference)
-        return jsonify({'success': True, 'status': result.get('status'), 'reference': reference})
-    except Exception as e:
-        current_app.logger.error(f'Paystack PIN error: {e}')
+        current_app.logger.error(f'Paystack init error: {e}')
         return jsonify({'success': False, 'message': str(e)}), 502
 
 
 @sales_bp.route('/paystack/verify/<reference>')
 @login_required
 def paystack_verify(reference):
-    """Poll Paystack to verify transaction status."""
+    """Verify Paystack transaction status after Popup closes."""
     from services.paystack import verify_transaction
     try:
         result = verify_transaction(reference)
-        status = result.get('status')  # 'success', 'failed', 'abandoned', 'pending'
-        return jsonify({'success': True, 'status': status, 'reference': reference})
+        return jsonify({'success': True, 'status': result.get('status'), 'reference': reference})
     except Exception as e:
         current_app.logger.error(f'Paystack verify error: {e}')
         return jsonify({'success': False, 'message': str(e)}), 502
