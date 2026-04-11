@@ -318,6 +318,7 @@
 <script src="https://js.paystack.co/v2/inline.js"></script>
 <script>
 const CURRENCY = '{{ CURRENCY_SYMBOL }}';
+const PAYSTACK_PUBLIC_KEY = '{{ config.PAYSTACK_PUBLIC_KEY }}';
 let cart = {};               // { productId: { id, name, price, stock, qty } }
 let selectedItemId = null;   // currently selected cart item for detail view
 let pendingNewCustomer = null; // holds { name, email, address } when registering on 3rd visit
@@ -765,51 +766,64 @@ function showPaystackStep(step) {
 }
 
 async function openPaystackPopup() {
-    // Auto-detect customer email and amount — no manual entry needed
+    // Auto-detect customer details from the selected customer or walk-in phone
     const customerSelect = document.getElementById('customerSelect');
     const selectedOpt = customerSelect.options[customerSelect.selectedIndex];
     const customerEmail = selectedOpt ? (selectedOpt.dataset.email || '') : '';
+    const customerPhone = selectedOpt ? (selectedOpt.dataset.phone || '') : '';
     const walkinPhone = (document.getElementById('walkinPhone')?.value || '').trim();
-    const email = customerEmail || (walkinPhone ? walkinPhone + '@pixxxel.com' : 'customer@pixxxel.com');
+    const phone = customerPhone || walkinPhone || '';
+    const email = customerEmail || (phone ? phone + '@pixxxel.com' : 'customer@pixxxel.com');
     const amount = getGrandTotal();
-    const btn = document.getElementById('paystackActionBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Initializing...';
+    const isMomo = paystackChannels && paystackChannels.includes('mobile_money');
 
-    try {
-        const resp = await fetch('/sales/paystack/initialize', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
-            body: JSON.stringify({ amount, email, channels: paystackChannels })
-        });
-        const data = await resp.json();
-        console.log('[Paystack Init]', resp.status, JSON.stringify(data));
-        if (!data.success) {
-            showToast(data.message || 'Could not initialize payment', 'danger');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-lock"></i> Proceed to Payment';
-            return;
-        }
-        paystackRef = data.reference;
-        showPaystackStep(2);
+    const onSuccess = function(transaction) {
+        paystackRef = transaction.reference || paystackRef;
+        document.getElementById('paystackRefDisplay').textContent = 'Reference: ' + paystackRef;
+        document.getElementById('refNumber').value = paystackRef;
+        showPaystackStep(3);
+    };
+    const onCancel = function() {
+        document.getElementById('paystackFailReason').textContent = 'Payment was cancelled.';
+        showPaystackStep(4);
+    };
 
-        // Launch Paystack Popup
+    showPaystackStep(2);
+
+    if (isMomo && phone) {
+        // ── MoMo with phone: open popup directly with phone pre-filled ──
         const popup = new PaystackPop();
-        popup.resumeTransaction(data.access_code, {
-            onSuccess: function(transaction) {
-                document.getElementById('paystackRefDisplay').textContent = 'Reference: ' + paystackRef;
-                document.getElementById('refNumber').value = paystackRef;
-                showPaystackStep(3);
-            },
-            onCancel: function() {
-                document.getElementById('paystackFailReason').textContent = 'Payment was cancelled.';
-                showPaystackStep(4);
-            }
+        popup.newTransaction({
+            key: PAYSTACK_PUBLIC_KEY,
+            email: email,
+            amount: Math.round(amount * 100),  // pesewas
+            currency: 'GHS',
+            channels: ['mobile_money'],
+            phone: phone,
+            onSuccess: onSuccess,
+            onCancel: onCancel
         });
-    } catch(e) {
-        showToast('Network error. Try again.', 'danger');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-lock"></i> Proceed to Payment';
+    } else {
+        // ── Card or MoMo without phone: backend init → resumeTransaction ──
+        try {
+            const resp = await fetch('/sales/paystack/initialize', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() },
+                body: JSON.stringify({ amount, email, channels: paystackChannels })
+            });
+            const data = await resp.json();
+            if (!data.success) {
+                showToast(data.message || 'Could not initialize payment', 'danger');
+                closeModal('paystackModal');
+                return;
+            }
+            paystackRef = data.reference;
+            const popup = new PaystackPop();
+            popup.resumeTransaction(data.access_code, { onSuccess, onCancel });
+        } catch(e) {
+            showToast('Network error. Try again.', 'danger');
+            closeModal('paystackModal');
+        }
     }
 }
 
