@@ -93,6 +93,28 @@ def create_app():
         from flask import Response
         return Response('google-site-verification: googleaebe13cc2405d838.html', mimetype='text/html')
 
+    @app.route('/sitemap.xml')
+    def sitemap():
+        from flask import Response
+        base = app.config.get('APP_URL', '').rstrip('/')
+        urls = ['/login']
+        items = '\n'.join(
+            f'  <url><loc>{base}{u}</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>'
+            for u in urls
+        )
+        xml = f'''<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{items}
+</urlset>'''
+        return Response(xml, mimetype='application/xml')
+
+    @app.route('/robots.txt')
+    def robots():
+        from flask import Response, request as _req
+        base = app.config.get('APP_URL', '').rstrip('/') or _req.host_url.rstrip('/')
+        content = f'User-agent: *\nDisallow: /\nSitemap: {base}/sitemap.xml\n'
+        return Response(content, mimetype='text/plain')
+
     with app.app_context():
         db.create_all()
         _auto_seed(app)
