@@ -88,6 +88,11 @@ def create_app():
     def pos_shortcut():
         return redirect(_url_for('sales.pos'))
 
+    @app.route('/googleaebe13cc2405d838.html')
+    def google_site_verification():
+        from flask import Response
+        return Response('google-site-verification: googleaebe13cc2405d838.html', mimetype='text/html')
+
     with app.app_context():
         db.create_all()
         _auto_seed(app)
