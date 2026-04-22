@@ -97,10 +97,13 @@ def create_app():
     def sitemap():
         from flask import Response
         base = app.config.get('APP_URL', '').rstrip('/')
-        urls = ['/login']
+        pages = [
+            ('/', '1.0', 'weekly'),
+            ('/login', '1.0', 'monthly'),
+        ]
         items = '\n'.join(
-            f'  <url><loc>{base}{u}</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>'
-            for u in urls
+            f'  <url><loc>{base}{u}</loc><changefreq>{freq}</changefreq><priority>{priority}</priority></url>'
+            for u, priority, freq in pages
         )
         xml = f'''<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -112,7 +115,21 @@ def create_app():
     def robots():
         from flask import Response, request as _req
         base = app.config.get('APP_URL', '').rstrip('/') or _req.host_url.rstrip('/')
-        content = f'User-agent: *\nDisallow: /\nSitemap: {base}/sitemap.xml\n'
+        content = (
+            'User-agent: *\n'
+            'Allow: /\n'
+            'Allow: /login\n'
+            'Disallow: /dashboard\n'
+            'Disallow: /products\n'
+            'Disallow: /inventory\n'
+            'Disallow: /customers\n'
+            'Disallow: /sales\n'
+            'Disallow: /payments\n'
+            'Disallow: /reports\n'
+            'Disallow: /ai\n'
+            'Disallow: /pos\n'
+            f'Sitemap: {base}/sitemap.xml\n'
+        )
         return Response(content, mimetype='text/plain')
 
     with app.app_context():

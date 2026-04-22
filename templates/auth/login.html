@@ -3,7 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login — {{ STORE_NAME }}</title>
+
+    <!-- Primary SEO -->
+    <title>Pixxxel Supermarket | Sales Manager POS System – Ghana</title>
+    <meta name="description" content="Pixxxel Supermarket's point-of-sale and sales management platform. Manage sales, inventory, customers, payments and reports in real-time. Built for retail managers in Ghana.">
+    <meta name="keywords" content="pixxxel supermarket, pixxxel POS, sales manager POS, point of sale system, retail POS Ghana, supermarket management system, inventory management, cashier system, sales tracking, Ghana retail software, POS software Ghana">
+    <meta name="author" content="Pixxxel Supermarket">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{{ request.url_root.rstrip('/') }}/login">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='logo.png') }}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='logo.png') }}">
+    <link rel="shortcut icon" href="{{ url_for('static', filename='logo.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='logo.png') }}">
+
+    <!-- Open Graph (Google, Facebook, WhatsApp previews) -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Pixxxel Supermarket | Sales Manager POS System">
+    <meta property="og:description" content="Manage sales, inventory, customers and reports in real-time with Pixxxel Supermarket's point-of-sale system.">
+    <meta property="og:image" content="{{ request.url_root.rstrip('/') }}{{ url_for('static', filename='logo.png') }}">
+    <meta property="og:url" content="{{ request.url_root.rstrip('/') }}/login">
+    <meta property="og:site_name" content="Pixxxel Supermarket POS">
+    <meta property="og:locale" content="en_GH">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Pixxxel Supermarket | Sales Manager POS System">
+    <meta name="twitter:description" content="Real-time point-of-sale and sales management for Pixxxel Supermarket, Ghana.">
+    <meta name="twitter:image" content="{{ request.url_root.rstrip('/') }}{{ url_for('static', filename='logo.png') }}">
+
+    <!-- Structured Data (Google rich results) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "Pixxxel Supermarket POS",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "description": "Point-of-sale and sales management system for Pixxxel Supermarket. Features inventory tracking, customer management, payment processing, and real-time sales reports.",
+      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "GHS" },
+      "provider": {
+        "@type": "Organization",
+        "name": "Pixxxel Supermarket",
+        "url": "{{ request.url_root.rstrip('/') }}"
+      }
+    }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
