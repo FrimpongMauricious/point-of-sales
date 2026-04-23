@@ -70,6 +70,7 @@ def create_app():
             'STORE_NAME': app.config['STORE_NAME'],
             'CURRENCY_SYMBOL': app.config['CURRENCY_SYMBOL'],
             'TAX_RATE': app.config['TAX_RATE'],
+            'APP_URL': app.config.get('APP_URL', '').rstrip('/'),
         }
 
     # Root redirect
@@ -77,16 +78,12 @@ def create_app():
     @app.route('/')
     def index():
         if current_user.is_authenticated:
-            return redirect(_url_for('dashboard.index'))
-        return redirect(_url_for('auth.login'))
-
-    @app.route('/login')
-    def login_shortcut():
-        return redirect(_url_for('auth.login'))
+            return redirect(_url_for('dashboard.index'), 301)
+        return redirect(_url_for('auth.login'), 301)
 
     @app.route('/pos')
     def pos_shortcut():
-        return redirect(_url_for('sales.pos'))
+        return redirect(_url_for('sales.pos'), 301)
 
     @app.route('/googleaebe13cc2405d838.html')
     def google_site_verification():
@@ -98,7 +95,6 @@ def create_app():
         from flask import Response
         base = app.config.get('APP_URL', '').rstrip('/')
         pages = [
-            ('/', '1.0', 'weekly'),
             ('/login', '1.0', 'monthly'),
         ]
         items = '\n'.join(

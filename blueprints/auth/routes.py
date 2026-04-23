@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 from models import db, User
 from functools import wraps
 
-auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+auth_bp = Blueprint('auth', __name__)
 
 
 def role_required(*roles):
@@ -21,7 +21,6 @@ def role_required(*roles):
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
-@auth_bp.route('/', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
         return _redirect_by_role(current_user.role)
@@ -63,11 +62,3 @@ def _redirect_by_role(role):
     else:
         return redirect(url_for('sales.pos'))
 
-
-# Make login accessible at /login directly
-from flask import Blueprint as _Blueprint
-_login_bp = Blueprint('login_redirect', __name__)
-
-@_login_bp.route('/login')
-def login_redirect():
-    return redirect(url_for('auth.login'))

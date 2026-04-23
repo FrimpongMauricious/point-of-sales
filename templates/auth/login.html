@@ -10,7 +10,7 @@
     <meta name="keywords" content="pixxxel supermarket, pixxxel POS, sales manager POS, point of sale system, retail POS Ghana, supermarket management system, inventory management, cashier system, sales tracking, Ghana retail software, POS software Ghana">
     <meta name="author" content="Pixxxel Supermarket">
     <meta name="robots" content="index, follow">
-    <link rel="canonical" href="{{ request.url_root.rstrip('/') }}/login">
+    <link rel="canonical" href="{{ (APP_URL or request.url_root.rstrip('/')) }}/login">
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='logo.png') }}">
@@ -22,8 +22,8 @@
     <meta property="og:type" content="website">
     <meta property="og:title" content="Pixxxel Supermarket | Sales Manager POS System">
     <meta property="og:description" content="Manage sales, inventory, customers and reports in real-time with Pixxxel Supermarket's point-of-sale system.">
-    <meta property="og:image" content="{{ request.url_root.rstrip('/') }}{{ url_for('static', filename='logo.png') }}">
-    <meta property="og:url" content="{{ request.url_root.rstrip('/') }}/login">
+    <meta property="og:image" content="{{ (APP_URL or request.url_root.rstrip('/')) }}{{ url_for('static', filename='logo.png') }}">
+    <meta property="og:url" content="{{ (APP_URL or request.url_root.rstrip('/')) }}/login">
     <meta property="og:site_name" content="Pixxxel Supermarket POS">
     <meta property="og:locale" content="en_GH">
 
@@ -31,7 +31,7 @@
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="Pixxxel Supermarket | Sales Manager POS System">
     <meta name="twitter:description" content="Real-time point-of-sale and sales management for Pixxxel Supermarket, Ghana.">
-    <meta name="twitter:image" content="{{ request.url_root.rstrip('/') }}{{ url_for('static', filename='logo.png') }}">
+    <meta name="twitter:image" content="{{ (APP_URL or request.url_root.rstrip('/')) }}{{ url_for('static', filename='logo.png') }}">
 
     <!-- Structured Data (Google rich results) -->
     <script type="application/ld+json">
@@ -46,7 +46,7 @@
       "provider": {
         "@type": "Organization",
         "name": "Pixxxel Supermarket",
-        "url": "{{ request.url_root.rstrip('/') }}"
+        "url": "{{ APP_URL or request.url_root.rstrip('/') }}"
       }
     }
     </script>
