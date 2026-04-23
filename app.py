@@ -113,17 +113,8 @@ def create_app():
         base = app.config.get('APP_URL', '').rstrip('/') or _req.host_url.rstrip('/')
         content = (
             'User-agent: *\n'
-            'Allow: /\n'
             'Allow: /login\n'
-            'Disallow: /dashboard\n'
-            'Disallow: /products\n'
-            'Disallow: /inventory\n'
-            'Disallow: /customers\n'
-            'Disallow: /sales\n'
-            'Disallow: /payments\n'
-            'Disallow: /reports\n'
-            'Disallow: /ai\n'
-            'Disallow: /pos\n'
+            'Disallow: /\n'
             f'Sitemap: {base}/sitemap.xml\n'
         )
         return Response(content, mimetype='text/plain')
